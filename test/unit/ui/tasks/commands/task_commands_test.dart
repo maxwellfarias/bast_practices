@@ -9,7 +9,7 @@ import 'package:mastering_tests/utils/result.dart';
 class MockTaskRepository extends Mock implements TaskRepository {}
 
 void main() {
-  group('TaskCommands', () {
+  group('Command Pattern - Official Flutter Implementation', () {
     late MockTaskRepository mockRepository;
 
     setUp(() {
@@ -22,8 +22,124 @@ void main() {
       registerFallbackValue(UpdateTaskData());
     });
 
-    group('CreateTaskCommand', () {
-      test('should execute successfully and call onSuccess', () async {
+    group('Command0 - Load Tasks', () {
+      test('should execute successfully and return success result', () async {
+        // Arrange
+        final tasks = [
+          Task(
+            id: '1',
+            title: 'Task 1',
+            description: 'Description 1',
+            isCompleted: false,
+            createdAt: DateTime.now(),
+          ),
+          Task(
+            id: '2',
+            title: 'Task 2',
+            description: 'Description 2',
+            isCompleted: true,
+            createdAt: DateTime.now(),
+          ),
+        ];
+        
+        when(() => mockRepository.getTasks())
+          .thenAnswer((_) async => Result.success(tasks));
+
+        final command = Command0<List<Task>>(() async {
+          return await mockRepository.getTasks();
+        });
+
+        // Act
+        await command.execute();
+
+        // Assert
+        expect(command.running, false);
+        expect(command.completed, true);
+        expect(command.error, false);
+        expect(command.result, isA<Success<List<Task>>>());
+        
+        final result = command.result as Success<List<Task>>;
+        expect(result.data, tasks);
+        
+        verify(() => mockRepository.getTasks()).called(1);
+      });
+
+      test('should execute with failure and return error result', () async {
+        // Arrange
+        const errorMessage = 'Failed to load tasks';
+        
+        when(() => mockRepository.getTasks())
+          .thenAnswer((_) async => Result.failure(errorMessage));
+
+        final command = Command0<List<Task>>(() async {
+          return await mockRepository.getTasks();
+        });
+
+        // Act
+        await command.execute();
+
+        // Assert
+        expect(command.running, false);
+        expect(command.completed, false);
+        expect(command.error, true);
+        expect(command.result, isA<Failure<List<Task>>>());
+        
+        final result = command.result as Failure<List<Task>>;
+        expect(result.error, errorMessage);
+        
+        verify(() => mockRepository.getTasks()).called(1);
+      });
+
+      test('should not execute multiple times when already running', () async {
+        // Arrange
+        const tasks = <Task>[];
+        
+        when(() => mockRepository.getTasks())
+          .thenAnswer((_) async {
+            await Future.delayed(const Duration(milliseconds: 100));
+            return Result.success(tasks);
+          });
+
+        final command = Command0<List<Task>>(() async {
+          return await mockRepository.getTasks();
+        });
+
+        // Act
+        final future1 = command.execute();
+        final future2 = command.execute(); // Should not execute
+
+        await Future.wait([future1, future2]);
+
+        // Assert
+        verify(() => mockRepository.getTasks()).called(1); // Only called once
+      });
+
+      test('should clear result when clearResult is called', () async {
+        // Arrange
+        const tasks = <Task>[];
+        
+        when(() => mockRepository.getTasks())
+          .thenAnswer((_) async => Result.success(tasks));
+
+        final command = Command0<List<Task>>(() async {
+          return await mockRepository.getTasks();
+        });
+
+        // Act
+        await command.execute();
+        expect(command.result, isNotNull);
+        
+        command.clearResult();
+
+        // Assert
+        expect(command.result, isNull);
+        expect(command.completed, false);
+        expect(command.error, false);
+      });
+    });
+
+    group('Command1 - Create Task', () {
+      test('should execute successfully with argument', () async {
         // Arrange
         final createData = CreateTaskData(
           title: 'New Task',
@@ -41,26 +157,26 @@ void main() {
         when(() => mockRepository.createTask(createData))
           .thenAnswer((_) async => Result.success(createdTask));
 
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = CreateTaskCommand(
-          mockRepository,
-          createData,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
+        final command = Command1<Task, CreateTaskData>((data) async {
+          return await mockRepository.createTask(data);
+        });
 
         // Act
-        await command.execute();
+        await command.execute(createData);
 
         // Assert
-        expect(onSuccessCalled, true);
-        expect(onErrorCalled, null);
+        expect(command.running, false);
+        expect(command.completed, true);
+        expect(command.error, false);
+        expect(command.result, isA<Success<Task>>());
+        
+        final result = command.result as Success<Task>;
+        expect(result.data, createdTask);
+        
         verify(() => mockRepository.createTask(createData)).called(1);
       });
 
-      test('should execute with failure and call onError', () async {
+      test('should execute with failure', () async {
         // Arrange
         final createData = CreateTaskData(
           title: 'New Task',
@@ -72,116 +188,28 @@ void main() {
         when(() => mockRepository.createTask(createData))
           .thenAnswer((_) async => Result.failure(errorMessage));
 
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = CreateTaskCommand(
-          mockRepository,
-          createData,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
+        final command = Command1<Task, CreateTaskData>((data) async {
+          return await mockRepository.createTask(data);
+        });
 
         // Act
-        await command.execute();
+        await command.execute(createData);
 
         // Assert
-        expect(onSuccessCalled, false);
-        expect(onErrorCalled, errorMessage);
-        verify(() => mockRepository.createTask(createData)).called(1);
-      });
-
-      test('should execute without callbacks without throwing', () async {
-        // Arrange
-        final createData = CreateTaskData(
-          title: 'New Task',
-          description: 'New Description',
-        );
+        expect(command.running, false);
+        expect(command.completed, false);
+        expect(command.error, true);
+        expect(command.result, isA<Failure<Task>>());
         
-        final createdTask = Task(
-          id: '1',
-          title: 'New Task',
-          description: 'New Description',
-          isCompleted: false,
-          createdAt: DateTime.now(),
-        );
+        final result = command.result as Failure<Task>;
+        expect(result.error, errorMessage);
         
-        when(() => mockRepository.createTask(createData))
-          .thenAnswer((_) async => Result.success(createdTask));
-
-        final command = CreateTaskCommand(mockRepository, createData);
-
-        // Act & Assert - Should not throw
-        await expectLater(command.execute(), completes);
-        
-        verify(() => mockRepository.createTask(createData)).called(1);
-      });
-
-      test('should execute with only onSuccess callback', () async {
-        // Arrange
-        final createData = CreateTaskData(
-          title: 'New Task',
-          description: 'New Description',
-        );
-        
-        final createdTask = Task(
-          id: '1',
-          title: 'New Task',
-          description: 'New Description',
-          isCompleted: false,
-          createdAt: DateTime.now(),
-        );
-        
-        when(() => mockRepository.createTask(createData))
-          .thenAnswer((_) async => Result.success(createdTask));
-
-        bool onSuccessCalled = false;
-
-        final command = CreateTaskCommand(
-          mockRepository,
-          createData,
-          onSuccess: () async => onSuccessCalled = true,
-        );
-
-        // Act
-        await command.execute();
-
-        // Assert
-        expect(onSuccessCalled, true);
-        verify(() => mockRepository.createTask(createData)).called(1);
-      });
-
-      test('should execute with only onError callback', () async {
-        // Arrange
-        final createData = CreateTaskData(
-          title: 'New Task',
-          description: 'New Description',
-        );
-        
-        const errorMessage = 'Failed to create task';
-        
-        when(() => mockRepository.createTask(createData))
-          .thenAnswer((_) async => Result.failure(errorMessage));
-
-        String? onErrorCalled;
-
-        final command = CreateTaskCommand(
-          mockRepository,
-          createData,
-          onError: (error) => onErrorCalled = error,
-        );
-
-        // Act
-        await command.execute();
-
-        // Assert
-        expect(onErrorCalled, errorMessage);
         verify(() => mockRepository.createTask(createData)).called(1);
       });
     });
 
-    group('UpdateTaskCommand', () {
-      test('should execute successfully and call onSuccess', () async {
+    group('Command1 - Update Task', () {
+      test('should execute successfully with record argument', () async {
         // Arrange
         const taskId = '1';
         final updateData = UpdateTaskData(
@@ -201,252 +229,119 @@ void main() {
         when(() => mockRepository.updateTask(taskId, updateData))
           .thenAnswer((_) async => Result.success(updatedTask));
 
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = UpdateTaskCommand(
-          mockRepository,
-          taskId,
-          updateData,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
+        final command = Command1<Task, ({String id, UpdateTaskData data})>((params) async {
+          return await mockRepository.updateTask(params.id, params.data);
+        });
 
         // Act
-        await command.execute();
+        await command.execute((id: taskId, data: updateData));
 
         // Assert
-        expect(onSuccessCalled, true);
-        expect(onErrorCalled, null);
-        verify(() => mockRepository.updateTask(taskId, updateData)).called(1);
-      });
-
-      test('should execute with failure and call onError', () async {
-        // Arrange
-        const taskId = '1';
-        final updateData = UpdateTaskData(title: 'Updated Task');
-        const errorMessage = 'Failed to update task';
+        expect(command.running, false);
+        expect(command.completed, true);
+        expect(command.error, false);
+        expect(command.result, isA<Success<Task>>());
         
-        when(() => mockRepository.updateTask(taskId, updateData))
-          .thenAnswer((_) async => Result.failure(errorMessage));
-
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = UpdateTaskCommand(
-          mockRepository,
-          taskId,
-          updateData,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
-
-        // Act
-        await command.execute();
-
-        // Assert
-        expect(onSuccessCalled, false);
-        expect(onErrorCalled, errorMessage);
+        final result = command.result as Success<Task>;
+        expect(result.data, updatedTask);
+        
         verify(() => mockRepository.updateTask(taskId, updateData)).called(1);
       });
     });
 
-    group('DeleteTaskCommand', () {
-      test('should execute successfully and call onSuccess', () async {
+    group('Command1 - Delete Task', () {
+      test('should execute successfully with string argument', () async {
         // Arrange
         const taskId = '1';
         
         when(() => mockRepository.deleteTask(taskId))
           .thenAnswer((_) async => Result.success(null));
 
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = DeleteTaskCommand(
-          mockRepository,
-          taskId,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
+        final command = Command1<void, String>((id) async {
+          return await mockRepository.deleteTask(id);
+        });
 
         // Act
-        await command.execute();
+        await command.execute(taskId);
 
         // Assert
-        expect(onSuccessCalled, true);
-        expect(onErrorCalled, null);
-        verify(() => mockRepository.deleteTask(taskId)).called(1);
-      });
-
-      test('should execute with failure and call onError', () async {
-        // Arrange
-        const taskId = '1';
-        const errorMessage = 'Failed to delete task';
+        expect(command.running, false);
+        expect(command.completed, true);
+        expect(command.error, false);
+        expect(command.result, isA<Success<void>>());
         
-        when(() => mockRepository.deleteTask(taskId))
-          .thenAnswer((_) async => Result.failure(errorMessage));
-
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = DeleteTaskCommand(
-          mockRepository,
-          taskId,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
-
-        // Act
-        await command.execute();
-
-        // Assert
-        expect(onSuccessCalled, false);
-        expect(onErrorCalled, errorMessage);
         verify(() => mockRepository.deleteTask(taskId)).called(1);
       });
     });
 
-    group('CompleteTaskCommand', () {
-      test('should execute successfully and call onSuccess', () async {
+    group('Command Notifications', () {
+      test('should notify listeners when state changes', () async {
         // Arrange
-        const taskId = '1';
+        const tasks = <Task>[];
         
-        final completedTask = Task(
-          id: taskId,
-          title: 'Task',
-          description: 'Description',
-          isCompleted: true,
-          createdAt: DateTime.now(),
-          completedAt: DateTime.now(),
-        );
+        when(() => mockRepository.getTasks())
+          .thenAnswer((_) async {
+            await Future.delayed(const Duration(milliseconds: 50));
+            return Result.success(tasks);
+          });
+
+        final command = Command0<List<Task>>(() async {
+          return await mockRepository.getTasks();
+        });
+
+        final notifications = <String>[];
         
-        when(() => mockRepository.updateTask(taskId, any()))
-          .thenAnswer((_) async => Result.success(completedTask));
-
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = CompleteTaskCommand(
-          mockRepository,
-          taskId,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
+        command.addListener(() {
+          if (command.running) {
+            notifications.add('running');
+          } else if (command.completed) {
+            notifications.add('completed');
+          } else if (command.error) {
+            notifications.add('error');
+          }
+        });
 
         // Act
         await command.execute();
 
         // Assert
-        expect(onSuccessCalled, true);
-        expect(onErrorCalled, null);
-        
-        // Verify that update was called with correct data
-        final capturedUpdateData = verify(() => mockRepository.updateTask(
-          taskId,
-          captureAny(),
-        )).captured.first as UpdateTaskData;
-        
-        expect(capturedUpdateData.isCompleted, true);
+        expect(notifications, ['running', 'completed']);
       });
 
-      test('should execute with failure and call onError', () async {
+      test('should notify listeners on error', () async {
         // Arrange
-        const taskId = '1';
-        const errorMessage = 'Failed to complete task';
+        const errorMessage = 'Test error';
         
-        when(() => mockRepository.updateTask(taskId, any()))
-          .thenAnswer((_) async => Result.failure(errorMessage));
+        when(() => mockRepository.getTasks())
+          .thenAnswer((_) async {
+            await Future.delayed(const Duration(milliseconds: 50));
+            return Result.failure(errorMessage);
+          });
 
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
+        final command = Command0<List<Task>>(() async {
+          return await mockRepository.getTasks();
+        });
 
-        final command = CompleteTaskCommand(
-          mockRepository,
-          taskId,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
+        final notifications = <String>[];
+        
+        command.addListener(() {
+          if (command.running) {
+            notifications.add('running');
+          } else if (command.error) {
+            notifications.add('error');
+          }
+        });
 
         // Act
         await command.execute();
 
         // Assert
-        expect(onSuccessCalled, false);
-        expect(onErrorCalled, errorMessage);
+        expect(notifications, ['running', 'error']);
       });
     });
 
-    group('UncompleteTaskCommand', () {
-      test('should execute successfully and call onSuccess', () async {
-        // Arrange
-        const taskId = '1';
-        
-        final uncompletedTask = Task(
-          id: taskId,
-          title: 'Task',
-          description: 'Description',
-          isCompleted: false,
-          createdAt: DateTime.now(),
-        );
-        
-        when(() => mockRepository.updateTask(taskId, any()))
-          .thenAnswer((_) async => Result.success(uncompletedTask));
-
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = UncompleteTaskCommand(
-          mockRepository,
-          taskId,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
-
-        // Act
-        await command.execute();
-
-        // Assert
-        expect(onSuccessCalled, true);
-        expect(onErrorCalled, null);
-        
-        // Verify that update was called with correct data
-        final capturedUpdateData = verify(() => mockRepository.updateTask(
-          taskId,
-          captureAny(),
-        )).captured.first as UpdateTaskData;
-        
-        expect(capturedUpdateData.isCompleted, false);
-      });
-
-      test('should execute with failure and call onError', () async {
-        // Arrange
-        const taskId = '1';
-        const errorMessage = 'Failed to uncomplete task';
-        
-        when(() => mockRepository.updateTask(taskId, any()))
-          .thenAnswer((_) async => Result.failure(errorMessage));
-
-        bool onSuccessCalled = false;
-        String? onErrorCalled;
-
-        final command = UncompleteTaskCommand(
-          mockRepository,
-          taskId,
-          onSuccess: () async => onSuccessCalled = true,
-          onError: (error) => onErrorCalled = error,
-        );
-
-        // Act
-        await command.execute();
-
-        // Assert
-        expect(onSuccessCalled, false);
-        expect(onErrorCalled, errorMessage);
-      });
-    });
-
-    group('Command integration', () {
-      test('should handle multiple commands sequentially', () async {
+    group('Command Integration', () {
+      test('should handle complex workflow with multiple commands', () async {
         // Arrange
         final createData = CreateTaskData(
           title: 'New Task',
@@ -472,68 +367,25 @@ void main() {
         when(() => mockRepository.updateTask('1', any()))
           .thenAnswer((_) async => Result.success(completedTask));
 
-        int callbackCount = 0;
-
-        final createCommand = CreateTaskCommand(
-          mockRepository,
-          createData,
-          onSuccess: () async => callbackCount++,
-        );
+        final createCommand = Command1<Task, CreateTaskData>((data) async {
+          return await mockRepository.createTask(data);
+        });
         
-        final completeCommand = CompleteTaskCommand(
-          mockRepository,
-          '1',
-          onSuccess: () async => callbackCount++,
-        );
+        final completeCommand = Command1<Task, String>((id) async {
+          final updateData = UpdateTaskData(isCompleted: true);
+          return await mockRepository.updateTask(id, updateData);
+        });
 
         // Act
-        await createCommand.execute();
-        await completeCommand.execute();
+        await createCommand.execute(createData);
+        await completeCommand.execute('1');
 
         // Assert
-        expect(callbackCount, 2);
+        expect(createCommand.completed, true);
+        expect(completeCommand.completed, true);
+        
         verify(() => mockRepository.createTask(createData)).called(1);
         verify(() => mockRepository.updateTask('1', any())).called(1);
-      });
-
-      test('should handle error in command chain', () async {
-        // Arrange
-        final createData = CreateTaskData(
-          title: 'New Task',
-          description: 'Description',
-        );
-        
-        const createError = 'Failed to create';
-        const updateError = 'Failed to update';
-        
-        when(() => mockRepository.createTask(createData))
-          .thenAnswer((_) async => Result.failure(createError));
-        
-        when(() => mockRepository.updateTask('1', any()))
-          .thenAnswer((_) async => Result.failure(updateError));
-
-        final errors = <String>[];
-
-        final createCommand = CreateTaskCommand(
-          mockRepository,
-          createData,
-          onError: (error) => errors.add(error),
-        );
-        
-        final completeCommand = CompleteTaskCommand(
-          mockRepository,
-          '1',
-          onError: (error) => errors.add(error),
-        );
-
-        // Act
-        await createCommand.execute();
-        await completeCommand.execute();
-
-        // Assert
-        expect(errors, hasLength(2));
-        expect(errors.first, createError);
-        expect(errors.last, updateError);
       });
     });
   });

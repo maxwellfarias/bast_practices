@@ -93,3 +93,38 @@ final class Failure<T> extends Result<T> {
   @override
   String toString() => 'Failure(error: $error)';
 }
+
+/// Aliases para compatibilidade com implementação oficial do Flutter
+typedef Ok<T> = Success<T>;
+typedef Error<T> = Failure<T>;
+
+/// Extensões úteis para Result
+extension ResultExtensions<T> on Result<T> {
+  /// Retorna o valor se for Success, caso contrário retorna null
+  T? get valueOrNull => when(
+        success: (value) => value,
+        failure: (_) => null,
+      );
+
+  /// Retorna o erro se for Failure, caso contrário retorna null
+  String? get errorOrNull => when(
+        success: (_) => null,
+        failure: (error) => error,
+      );
+
+  /// Retorna o valor se for Success, caso contrário retorna o valor padrão
+  T valueOr(T defaultValue) => when(
+        success: (value) => value,
+        failure: (_) => defaultValue,
+      );
+
+  /// Executa uma ação apenas se for Success
+  void onSuccess(void Function(T value) action) {
+    whenOrNull(success: action);
+  }
+
+  /// Executa uma ação apenas se for Failure
+  void onError(void Function(String error) action) {
+    whenOrNull(failure: action);
+  }
+}

@@ -178,40 +178,84 @@ class SupabaseTaskRepository implements TaskRepository {
 
 ### UI Layer - ViewModels e Commands
 
-**Command Pattern**:
+**Command Pattern Oficial do Flutter**:
 
 ```dart
 // lib/ui/tasks/view_model/task_commands.dart
-abstract class TaskCommand {
-  Future<void> execute();
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import '../../../utils/result.dart';
+
+typedef CommandAction0<T> = Future<Result<T>> Function();
+typedef CommandAction1<T, A> = Future<Result<T>> Function(A);
+
+/// Implementação oficial do Command Pattern do Flutter
+/// 
+/// Facilita interação com ViewModels, encapsula ações,
+/// expõe estados de running/error e previne execução múltipla.
+abstract class Command<T> extends ChangeNotifier {
+  bool _running = false;
+  Result<T>? _result;
+
+  /// True quando a ação está executando
+  bool get running => _running;
+
+  /// True se a ação completou com erro
+  bool get error => _result is Error;
+
+  /// True se a ação completou com sucesso
+  bool get completed => _result is Ok;
+
+  /// Resultado da última execução
+  Result<T>? get result => _result;
+
+  /// Limpa o resultado da última execução
+  void clearResult() {
+    _result = null;
+    notifyListeners();
+  }
+
+  /// Implementação interna de execução
+  Future<void> _execute(CommandAction0<T> action) async {
+    if (_running) return; // Previne execução múltipla
+
+    _running = true;
+    _result = null;
+    notifyListeners();
+
+    try {
+      _result = await action();
+    } finally {
+      _running = false;
+      notifyListeners();
+    }
+  }
 }
 
-class CreateTaskCommand extends TaskCommand {
-  final TaskRepository _repository;
-  final CreateTaskData _data;
-  final VoidCallback? _onSuccess;
-  final Function(String)? _onError;
+/// Command sem argumentos
+class Command0<T> extends Command<T> {
+  final CommandAction0<T> _action;
 
-  CreateTaskCommand(
-    this._repository,
-    this._data, {
-    VoidCallback? onSuccess,
-    Function(String)? onError,
-  }) : _onSuccess = onSuccess, _onError = onError;
+  Command0(this._action);
 
-  @override
   Future<void> execute() async {
-    final result = await _repository.createTask(_data);
-    
-    result.when(
-      success: (_) => _onSuccess?.call(),
-      failure: (error) => _onError?.call(error),
-    );
+    await _execute(_action);
+  }
+}
+
+/// Command com um argumento
+class Command1<T, A> extends Command<T> {
+  final CommandAction1<T, A> _action;
+
+  Command1(this._action);
+
+  Future<void> execute(A argument) async {
+    await _execute(() => _action(argument));
   }
 }
 ```
 
-**ViewModel**:
+**ViewModel com Commands Oficiais**:
 
 ```dart
 // lib/ui/tasks/view_model/task_view_model.dart
@@ -222,40 +266,86 @@ class TaskViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  TaskViewModel(this._repository);
+  // Commands para operações CRUD
+  late final Command1<Task, CreateTaskData> createTaskCommand;
+  late final Command1<Task, ({String id, UpdateTaskData data})> updateTaskCommand;
+  late final Command1<void, String> deleteTaskCommand;
+  late final Command1<Task, String> completeTaskCommand;
+  late final Command1<Task, String> uncompleteTaskCommand;
+  late final Command0<List<Task>> loadTasksCommand;
+
+  TaskViewModel(this._repository) {
+    _initializeCommands();
+    _setupCommandListeners();
+  }
 
   // Getters
   List<Task> get tasks => _tasks;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // Commands
-  Future<void> loadTasks() async {
-    _setLoading(true);
-    _setError(null);
+  /// Inicializa todos os comandos
+  void _initializeCommands() {
+    // Comando para carregar tarefas
+    loadTasksCommand = Command0<List<Task>>(() async {
+      return await _repository.getTasks();
+    });
 
-    final result = await _repository.getTasks();
-    
-    result.when(
-      success: (tasks) => _setTasks(tasks),
-      failure: (error) => _setError(error),
-    );
-    
-    _setLoading(false);
+    // Comando para criar tarefa
+    createTaskCommand = Command1<Task, CreateTaskData>((data) async {
+      final result = await _repository.createTask(data);
+      if (result.isSuccess) {
+        await loadTasksCommand.execute(); // Auto-reload
+      }
+      return result;
+    });
+
+    // Comando para atualizar tarefa
+    updateTaskCommand = Command1<Task, ({String id, UpdateTaskData data})>((params) async {
+      final result = await _repository.updateTask(params.id, params.data);
+      if (result.isSuccess) {
+        await loadTasksCommand.execute(); // Auto-reload
+      }
+      return result;
+    });
+
+    // Outros comandos...
+  }
+
+  /// Configura listeners para os comandos
+  void _setupCommandListeners() {
+    loadTasksCommand.addListener(() {
+      _setLoading(loadTasksCommand.running);
+      
+      final result = loadTasksCommand.result;
+      if (result != null) {
+        result.when(
+          success: (tasks) {
+            _setTasks(tasks);
+            _setError(null);
+          },
+          failure: (error) => _setError(error),
+        );
+      }
+    });
+
+    // Listeners para outros comandos...
+  }
+
+  // Métodos públicos
+  Future<void> loadTasks() async {
+    await loadTasksCommand.execute();
   }
 
   Future<void> createTask(CreateTaskData data) async {
-    final command = CreateTaskCommand(
-      _repository,
-      data,
-      onSuccess: loadTasks,
-      onError: _setError,
-    );
-    
-    await command.execute();
+    await createTaskCommand.execute(data);
   }
 
-  // Private methods
+  Future<void> updateTask(String id, UpdateTaskData data) async {
+    await updateTaskCommand.execute((id: id, data: data));
+  }
+
+  // Métodos privados para gerenciar estado
   void _setTasks(List<Task> tasks) {
     _tasks = tasks;
     notifyListeners();
@@ -270,56 +360,257 @@ class TaskViewModel extends ChangeNotifier {
     _error = error;
     notifyListeners();
   }
+
+  @override
+  void dispose() {
+    // Dispose dos comandos
+    loadTasksCommand.dispose();
+    createTaskCommand.dispose();
+    updateTaskCommand.dispose();
+    deleteTaskCommand.dispose();
+    completeTaskCommand.dispose();
+    uncompleteTaskCommand.dispose();
+    
+    super.dispose();
+  }
 }
+```
 ```
 
 ---
 
-## 4. Estratégias de Teste
+## 4. Testando Commands Oficiais
 
-### Pirâmide de Testes
+### Commands com Pattern Result
 
+**Estrutura do Command Oficial**:
+
+```dart
+// lib/ui/tasks/view_model/task_commands.dart
+abstract class Command<T> extends ChangeNotifier {
+  bool _running = false;
+  Result<T>? _result;
+
+  bool get running => _running;
+  bool get completed => _result != null && _result!.isSuccess;
+  bool get error => _result != null && _result!.isFailure;
+  Result<T>? get result => _result;
+
+  void clearResult() {
+    _result = null;
+    notifyListeners();
+  }
+
+  Future<Result<T>> _execute();
+
+  Future<Result<T>> execute() async {
+    if (_running) return _result ?? const Failure('Command already running');
+
+    _running = true;
+    _result = null;
+    notifyListeners();
+
+    try {
+      _result = await _execute();
+    } catch (e) {
+      _result = Failure(e.toString());
+    } finally {
+      _running = false;
+      notifyListeners();
+    }
+
+    return _result!;
+  }
+}
+
+// Command sem parâmetros
+class Command0<T> extends Command<T> {
+  final CommandAction0<T> _action;
+  
+  Command0(this._action);
+  
+  @override
+  Future<Result<T>> _execute() => _action();
+}
+
+// Command com um parâmetro
+class Command1<T, A> extends Command<T> {
+  final CommandAction1<T, A> _action;
+  A? _lastArgument;
+  
+  Command1(this._action);
+  
+  Future<Result<T>> execute([A? argument]) async {
+    _lastArgument = argument;
+    return super.execute();
+  }
+  
+  @override
+  Future<Result<T>> _execute() {
+    if (_lastArgument == null) {
+      throw ArgumentError('Command1 requires an argument');
+    }
+    return _action(_lastArgument as A);
+  }
+}
+
+// Typedefs para actions
+typedef CommandAction0<T> = Future<Result<T>> Function();
+typedef CommandAction1<T, A> = Future<Result<T>> Function(A argument);
 ```
-        /\
-       /  \
-      / UI \     ← Poucos testes de integração
-     /______\
-    /        \
-   / Widget   \   ← Testes de widget moderados
-  /____________\
- /              \
-/ Unit Tests     \ ← Muitos testes unitários
-/________________\
-```
 
-### Tipos de Teste por Camada
+**Testes dos Commands**:
 
-1. **Data Layer**: Testes unitários para services e repositories
-2. **Domain Layer**: Testes unitários para modelos e regras de negócio
-3. **UI Layer**: Testes unitários para ViewModels e Commands + Testes de widget
+```dart
+// test/unit/ui/tasks/commands/task_commands_test.dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mastering_tests/ui/tasks/view_model/task_commands.dart';
+import 'package:mastering_tests/utils/result.dart';
 
-### Organização dos Testes
+void main() {
+  group('Command0 Tests', () {
+    test('should execute command and return success result', () async {
+      // Arrange
+      const expectedValue = 'success';
+      final command = Command0<String>(() async {
+        return const Success(expectedValue);
+      });
 
-```
-test/
-├── unit/
-│   ├── data/
-│   │   ├── repositories/
-│   │   │   └── task_repository_test.dart
-│   │   └── services/
-│   │       └── task_api_service_test.dart
-│   ├── domain/
-│   │   └── models/
-│   │       └── task_test.dart
-│   └── ui/
-│       └── tasks/
-│           ├── view_model/
-│           │   └── task_view_model_test.dart
-│           └── commands/
-│               └── task_commands_test.dart
-└── widget/
-    └── tasks/
-        └── task_screen_test.dart
+      // Act
+      final result = await command.execute();
+
+      // Assert
+      expect(result.isSuccess, isTrue);
+      expect(result.valueOrNull, equals(expectedValue));
+      expect(command.completed, isTrue);
+      expect(command.running, isFalse);
+      expect(command.error, isFalse);
+    });
+
+    test('should handle errors and return failure result', () async {
+      // Arrange
+      const errorMessage = 'Something went wrong';
+      final command = Command0<String>(() async {
+        return const Failure(errorMessage);
+      });
+
+      // Act
+      final result = await command.execute();
+
+      // Assert
+      expect(result.isFailure, isTrue);
+      expect(result.errorOrNull, equals(errorMessage));
+      expect(command.error, isTrue);
+      expect(command.running, isFalse);
+      expect(command.completed, isFalse);
+    });
+
+    test('should prevent multiple executions', () async {
+      // Arrange
+      var executionCount = 0;
+      final command = Command0<String>(() async {
+        executionCount++;
+        await Future.delayed(const Duration(milliseconds: 100));
+        return const Success('done');
+      });
+
+      // Act
+      final future1 = command.execute();
+      final future2 = command.execute(); // Should not execute
+
+      // Assert
+      expect(command.running, isTrue);
+      
+      await future1;
+      await future2;
+      
+      expect(executionCount, equals(1));
+      expect(command.running, isFalse);
+    });
+
+    test('should notify listeners during execution', () async {
+      // Arrange
+      final command = Command0<String>(() async {
+        await Future.delayed(const Duration(milliseconds: 50));
+        return const Success('done');
+      });
+
+      var notificationCount = 0;
+      command.addListener(() {
+        notificationCount++;
+      });
+
+      // Act
+      await command.execute();
+
+      // Assert
+      expect(notificationCount, greaterThanOrEqualTo(2)); // Start and end
+    });
+
+    test('should clear result', () async {
+      // Arrange
+      final command = Command0<String>(() async {
+        return const Success('result');
+      });
+
+      await command.execute();
+      expect(command.result, isNotNull);
+
+      // Act
+      command.clearResult();
+
+      // Assert
+      expect(command.result, isNull);
+      expect(command.completed, isFalse);
+      expect(command.error, isFalse);
+    });
+  });
+
+  group('Command1 Tests', () {
+    test('should execute with argument and return success result', () async {
+      // Arrange
+      const input = 42;
+      const expectedValue = 'processed: 42';
+      final command = Command1<String, int>((value) async {
+        return Success('processed: $value');
+      });
+
+      // Act
+      final result = await command.execute(input);
+
+      // Assert
+      expect(result.isSuccess, isTrue);
+      expect(result.valueOrNull, equals(expectedValue));
+      expect(command.completed, isTrue);
+    });
+
+    test('should throw error when executed without argument', () async {
+      // Arrange
+      final command = Command1<String, int>((value) async {
+        return Success('processed: $value');
+      });
+
+      // Act & Assert
+      expect(() => command.execute(), throwsA(isA<ArgumentError>()));
+    });
+
+    test('should handle errors with arguments', () async {
+      // Arrange
+      const errorMessage = 'Invalid input';
+      final command = Command1<String, int>((value) async {
+        return const Failure(errorMessage);
+      });
+
+      // Act
+      final result = await command.execute(123);
+
+      // Assert
+      expect(result.isFailure, isTrue);
+      expect(result.errorOrNull, equals(errorMessage));
+      expect(command.error, isTrue);
+    });
+  });
+}
 ```
 
 ---
@@ -678,19 +969,22 @@ void main() {
 
 ## 7. Testes da UI Layer
 
-### Testando ViewModels
+### Testando ViewModels com Commands Oficiais
 
 ```dart
 // test/unit/ui/tasks/view_model/task_view_model_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:mastering_tests/ui/tasks/view_model/task_view_model.dart';
+import 'package:mastering_tests/domain/models/task.dart';
+import 'package:mastering_tests/utils/result.dart';
 
 class MockTaskRepository extends Mock implements TaskRepository {}
 
 void main() {
   group('TaskViewModel', () {
-    late TaskViewModel viewModel;
     late MockTaskRepository mockRepository;
+    late TaskViewModel viewModel;
 
     setUp(() {
       mockRepository = MockTaskRepository();
@@ -701,208 +995,193 @@ void main() {
       viewModel.dispose();
     });
 
-    group('initial state', () {
-      test('should have correct initial values', () {
-        // Assert
-        expect(viewModel.tasks, isEmpty);
-        expect(viewModel.isLoading, false);
-        expect(viewModel.error, null);
-      });
-    });
-
     group('loadTasks', () {
-      test('should emit loading states and load tasks successfully', () async {
+      test('should load tasks successfully', () async {
         // Arrange
-        final tasks = [
-          Task(
-            id: '1',
-            title: 'Task 1',
-            description: 'Description 1',
-            isCompleted: false,
-            createdAt: DateTime.now(),
-          ),
-          Task(
-            id: '2',
-            title: 'Task 2',
-            description: 'Description 2',
-            isCompleted: true,
-            createdAt: DateTime.now(),
-          ),
+        final expectedTasks = [
+          const Task(id: '1', title: 'Task 1'),
+          const Task(id: '2', title: 'Task 2'),
         ];
-        
+
         when(() => mockRepository.getTasks())
-          .thenAnswer((_) async => Result.success(tasks));
-
-        // Track state changes
-        final loadingStates = <bool>[];
-        final taskStates = <List<Task>>[];
-        final errorStates = <String?>[];
-
-        viewModel.addListener(() {
-          loadingStates.add(viewModel.isLoading);
-          taskStates.add(List.from(viewModel.tasks));
-          errorStates.add(viewModel.error);
-        });
+            .thenAnswer((_) async => Success(expectedTasks));
 
         // Act
         await viewModel.loadTasks();
 
         // Assert
-        expect(loadingStates, [true, false]); // loading -> not loading
-        expect(taskStates.last, tasks);
-        expect(errorStates.last, null);
-        
-        verify(() => mockRepository.getTasks()).called(1);
+        expect(viewModel.tasks, equals(expectedTasks));
+        expect(viewModel.isLoading, isFalse);
+        expect(viewModel.error, isNull);
+        expect(viewModel.loadTasksCommand.completed, isTrue);
       });
 
-      test('should emit loading states and handle error', () async {
+      test('should handle load tasks error', () async {
         // Arrange
         const errorMessage = 'Failed to load tasks';
-        
         when(() => mockRepository.getTasks())
-          .thenAnswer((_) async => Result.failure(errorMessage));
-
-        // Track state changes
-        final loadingStates = <bool>[];
-        final errorStates = <String?>[];
-
-        viewModel.addListener(() {
-          loadingStates.add(viewModel.isLoading);
-          errorStates.add(viewModel.error);
-        });
+            .thenAnswer((_) async => const Failure(errorMessage));
 
         // Act
         await viewModel.loadTasks();
 
         // Assert
-        expect(loadingStates, [true, false]);
-        expect(errorStates.last, errorMessage);
         expect(viewModel.tasks, isEmpty);
+        expect(viewModel.isLoading, isFalse);
+        expect(viewModel.error, equals(errorMessage));
+        expect(viewModel.loadTasksCommand.error, isTrue);
+      });
+
+      test('should set loading state during execution', () async {
+        // Arrange
+        when(() => mockRepository.getTasks())
+            .thenAnswer((_) async {
+          await Future.delayed(const Duration(milliseconds: 100));
+          return const Success(<Task>[]);
+        });
+
+        // Act
+        final future = viewModel.loadTasks();
         
-        verify(() => mockRepository.getTasks()).called(1);
+        // Assert loading state
+        expect(viewModel.isLoading, isTrue);
+        expect(viewModel.loadTasksCommand.running, isTrue);
+        
+        await future;
+        
+        expect(viewModel.isLoading, isFalse);
+        expect(viewModel.loadTasksCommand.running, isFalse);
       });
     });
 
     group('createTask', () {
-      test('should create task and reload tasks on success', () async {
+      test('should create task and reload tasks', () async {
         // Arrange
-        final createData = CreateTaskData(
-          title: 'New Task',
-          description: 'New Description',
-        );
-        
-        final createdTask = Task(
-          id: '1',
-          title: 'New Task',
-          description: 'New Description',
-          isCompleted: false,
-          createdAt: DateTime.now(),
-        );
-        
-        when(() => mockRepository.createTask(createData))
-          .thenAnswer((_) async => Result.success(createdTask));
-        
+        final taskData = CreateTaskData(title: 'New Task');
+        final createdTask = Task(id: '1', title: 'New Task');
+        final allTasks = [createdTask];
+
+        when(() => mockRepository.createTask(taskData))
+            .thenAnswer((_) async => Success(createdTask));
         when(() => mockRepository.getTasks())
-          .thenAnswer((_) async => Result.success([createdTask]));
+            .thenAnswer((_) async => Success(allTasks));
 
         // Act
-        await viewModel.createTask(createData);
+        await viewModel.createTask(taskData);
 
         // Assert
-        expect(viewModel.tasks, [createdTask]);
-        expect(viewModel.error, null);
-        
-        verify(() => mockRepository.createTask(createData)).called(1);
+        expect(viewModel.tasks, equals(allTasks));
+        expect(viewModel.createTaskCommand.completed, isTrue);
+        expect(viewModel.loadTasksCommand.completed, isTrue);
+        verify(() => mockRepository.createTask(taskData)).called(1);
         verify(() => mockRepository.getTasks()).called(1);
       });
 
-      test('should set error when create task fails', () async {
+      test('should handle create task error', () async {
         // Arrange
-        final createData = CreateTaskData(
-          title: 'New Task',
-          description: 'New Description',
-        );
-        
+        final taskData = CreateTaskData(title: 'New Task');
         const errorMessage = 'Failed to create task';
-        
-        when(() => mockRepository.createTask(createData))
-          .thenAnswer((_) async => Result.failure(errorMessage));
+
+        when(() => mockRepository.createTask(taskData))
+            .thenAnswer((_) async => const Failure(errorMessage));
 
         // Act
-        await viewModel.createTask(createData);
+        await viewModel.createTask(taskData);
 
         // Assert
-        expect(viewModel.error, errorMessage);
-        expect(viewModel.tasks, isEmpty);
-        
-        verify(() => mockRepository.createTask(createData)).called(1);
+        expect(viewModel.createTaskCommand.error, isTrue);
+        expect(viewModel.createTaskCommand.result?.errorOrNull, equals(errorMessage));
         verifyNever(() => mockRepository.getTasks());
       });
     });
 
     group('updateTask', () {
-      test('should update task and reload tasks on success', () async {
+      test('should update task and reload tasks', () async {
         // Arrange
         const taskId = '1';
-        final updateData = UpdateTaskData(
-          title: 'Updated Task',
-          isCompleted: true,
-        );
-        
-        final updatedTask = Task(
-          id: taskId,
-          title: 'Updated Task',
-          description: 'Description',
-          isCompleted: true,
-          createdAt: DateTime.now(),
-          completedAt: DateTime.now(),
-        );
-        
+        final updateData = UpdateTaskData(title: 'Updated Task');
+        final updatedTask = Task(id: taskId, title: 'Updated Task');
+        final allTasks = [updatedTask];
+
         when(() => mockRepository.updateTask(taskId, updateData))
-          .thenAnswer((_) async => Result.success(updatedTask));
-        
+            .thenAnswer((_) async => Success(updatedTask));
         when(() => mockRepository.getTasks())
-          .thenAnswer((_) async => Result.success([updatedTask]));
+            .thenAnswer((_) async => Success(allTasks));
 
         // Act
         await viewModel.updateTask(taskId, updateData);
 
         // Assert
-        expect(viewModel.tasks, [updatedTask]);
-        expect(viewModel.error, null);
-        
+        expect(viewModel.tasks, equals(allTasks));
+        expect(viewModel.updateTaskCommand.completed, isTrue);
         verify(() => mockRepository.updateTask(taskId, updateData)).called(1);
         verify(() => mockRepository.getTasks()).called(1);
       });
     });
 
-    group('deleteTask', () {
-      test('should delete task and reload tasks on success', () async {
+    group('Command States', () {
+      test('should prevent multiple command executions', () async {
         // Arrange
-        const taskId = '1';
-        
-        when(() => mockRepository.deleteTask(taskId))
-          .thenAnswer((_) async => Result.success(null));
-        
         when(() => mockRepository.getTasks())
-          .thenAnswer((_) async => Result.success([]));
+            .thenAnswer((_) async {
+          await Future.delayed(const Duration(milliseconds: 100));
+          return const Success(<Task>[]);
+        });
 
         // Act
-        await viewModel.deleteTask(taskId);
+        final future1 = viewModel.loadTasks();
+        final future2 = viewModel.loadTasks(); // Should not execute
 
         // Assert
-        expect(viewModel.tasks, isEmpty);
-        expect(viewModel.error, null);
+        expect(viewModel.loadTasksCommand.running, isTrue);
         
-        verify(() => mockRepository.deleteTask(taskId)).called(1);
-        verify(() => mockRepository.getTasks()).called(1);
+        await future1;
+        await future2;
+        
+        verify(() => mockRepository.getTasks()).called(1); // Only called once
+      });
+
+      test('should clear command results', () async {
+        // Arrange
+        when(() => mockRepository.getTasks())
+            .thenAnswer((_) async => const Success(<Task>[]));
+
+        await viewModel.loadTasks();
+        expect(viewModel.loadTasksCommand.result, isNotNull);
+
+        // Act
+        viewModel.loadTasksCommand.clearResult();
+
+        // Assert
+        expect(viewModel.loadTasksCommand.result, isNull);
+        expect(viewModel.loadTasksCommand.completed, isFalse);
+        expect(viewModel.loadTasksCommand.error, isFalse);
+      });
+    });
+
+    group('ChangeNotifier', () {
+      test('should notify listeners when state changes', () async {
+        // Arrange
+        when(() => mockRepository.getTasks())
+            .thenAnswer((_) async => const Success(<Task>[]));
+
+        var notificationCount = 0;
+        viewModel.addListener(() {
+          notificationCount++;
+        });
+
+        // Act
+        await viewModel.loadTasks();
+
+        // Assert
+        expect(notificationCount, greaterThan(0));
       });
     });
   });
 }
 ```
 
-### Testando Commands
+### Testando Commands Oficiais
 
 ```dart
 // test/unit/ui/tasks/commands/task_commands_test.dart

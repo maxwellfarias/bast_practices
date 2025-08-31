@@ -1,145 +1,98 @@
+// Copyright 2024 The Flutter team. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
-import '../../../domain/models/task.dart';
-import '../../../data/repositories/task_repository.dart';
 
-/// Interface base para todos os comandos de tarefa
-/// 
-/// Implementa o Command Pattern para encapsular operações
-/// e permitir execução assíncrona com callbacks.
-abstract interface class TaskCommand {
-  Future<void> execute();
-}
+import '../../../utils/result.dart';
 
-/// Comando para criar uma nova tarefa
-class CreateTaskCommand implements TaskCommand {
-  final TaskRepository _repository;
-  final CreateTaskData _data;
-  final Future<void> Function()? _onSuccess;
-  final ValueChanged<String>? _onError;
+typedef CommandAction0<T> = Future<Result<T>> Function();
+typedef CommandAction1<T, A> = Future<Result<T>> Function(A);
 
-  CreateTaskCommand(
-    this._repository,
-    this._data, {
-    Future<void> Function()? onSuccess,
-    ValueChanged<String>? onError,
-  })  : _onSuccess = onSuccess,
-        _onError = onError;
+/// Facilitates interaction with a ViewModel.
+///
+/// Encapsulates an action,
+/// exposes its running and error states,
+/// and ensures that it can't be launched again until it finishes.
+///
+/// Use [Command0] for actions without arguments.
+/// Use [Command1] for actions with one argument.
+///
+/// Actions must return a [Result].
+///
+/// Consume the action result by listening to changes,
+/// then call to [clearResult] when the state is consumed.
+abstract class Command<T> extends ChangeNotifier {
+  Command();
 
-  @override
-  Future<void> execute() async {
-    final result = await _repository.createTask(_data);
-    
-    await result.when(
-      success: (_) async => await _onSuccess?.call(),
-      failure: (error) async => _onError?.call(error),
-    );
+  bool _running = false;
+
+  /// True when the action is running.
+  bool get running => _running;
+
+  Result<T>? _result;
+
+  /// true if action completed with error
+  bool get error => _result is Error;
+
+  /// true if action completed successfully
+  bool get completed => _result is Ok;
+
+  /// Get last action result
+  Result? get result => _result;
+
+  /// Clear last action result
+  void clearResult() {
+    _result = null;
+    notifyListeners();
+  }
+
+  /// Internal execute implementation
+  Future<void> _execute(CommandAction0<T> action) async {
+    // Ensure the action can't launch multiple times.
+    // e.g. avoid multiple taps on button
+    if (_running) return;
+
+    // Notify listeners.
+    // e.g. button shows loading state
+    _running = true;
+    //A UI será notificada que o carregamento está acontecendo, devido a isso, é necessário que o 
+    _result = null;
+    notifyListeners();
+
+    try {
+      _result = await action();
+    } finally {
+      _running = false;
+      notifyListeners();
+    }
   }
 }
 
-/// Comando para atualizar uma tarefa existente
-class UpdateTaskCommand implements TaskCommand {
-  final TaskRepository _repository;
-  final String _taskId;
-  final UpdateTaskData _data;
-  final Future<void> Function()? _onSuccess;
-  final ValueChanged<String>? _onError;
+/// [Command] without arguments.
+/// Takes a [CommandAction0] as action.
+class Command0<T> extends Command<T> {
+  Command0(this._action);
 
-  UpdateTaskCommand(
-    this._repository,
-    this._taskId,
-    this._data, {
-    Future<void> Function()? onSuccess,
-    ValueChanged<String>? onError,
-  })  : _onSuccess = onSuccess,
-        _onError = onError;
+  final CommandAction0<T> _action;
 
-  @override
+  /// Executes the action.
   Future<void> execute() async {
-    final result = await _repository.updateTask(_taskId, _data);
-    
-    await result.when(
-      success: (_) async => await _onSuccess?.call(),
-      failure: (error) async => _onError?.call(error),
-    );
+    await _execute(_action);
   }
 }
 
-/// Comando para excluir uma tarefa
-class DeleteTaskCommand implements TaskCommand {
-  final TaskRepository _repository;
-  final String _taskId;
-  final Future<void> Function()? _onSuccess;
-  final ValueChanged<String>? _onError;
+/// [Command] with one argument.
+/// Takes a [CommandAction1] as action.
+class Command1<T, A> extends Command<T> {
+  Command1(this._action);
 
-  DeleteTaskCommand(
-    this._repository,
-    this._taskId, {
-    Future<void> Function()? onSuccess,
-    ValueChanged<String>? onError,
-  })  : _onSuccess = onSuccess,
-        _onError = onError;
+  final CommandAction1<T, A> _action;
 
-  @override
-  Future<void> execute() async {
-    final result = await _repository.deleteTask(_taskId);
-    
-    await result.when(
-      success: (_) async => await _onSuccess?.call(),
-      failure: (error) async => _onError?.call(error),
-    );
-  }
-}
-
-/// Comando para marcar uma tarefa como concluída
-class CompleteTaskCommand implements TaskCommand {
-  final TaskRepository _repository;
-  final String _taskId;
-  final Future<void> Function()? _onSuccess;
-  final ValueChanged<String>? _onError;
-
-  CompleteTaskCommand(
-    this._repository,
-    this._taskId, {
-    Future<void> Function()? onSuccess,
-    ValueChanged<String>? onError,
-  })  : _onSuccess = onSuccess,
-        _onError = onError;
-
-  @override
-  Future<void> execute() async {
-    final updateData = UpdateTaskData(isCompleted: true);
-    final result = await _repository.updateTask(_taskId, updateData);
-    
-    await result.when(
-      success: (_) async => await _onSuccess?.call(),
-      failure: (error) async => _onError?.call(error),
-    );
-  }
-}
-
-/// Comando para marcar uma tarefa como não concluída
-class UncompleteTaskCommand implements TaskCommand {
-  final TaskRepository _repository;
-  final String _taskId;
-  final Future<void> Function()? _onSuccess;
-  final ValueChanged<String>? _onError;
-
-  UncompleteTaskCommand(
-    this._repository,
-    this._taskId, {
-    Future<void> Function()? onSuccess,
-    ValueChanged<String>? onError,
-  })  : _onSuccess = onSuccess,
-        _onError = onError;
-
-  @override
-  Future<void> execute() async {
-    final updateData = UpdateTaskData(isCompleted: false);
-    final result = await _repository.updateTask(_taskId, updateData);
-    
-    await result.when(
-      success: (_) async => await _onSuccess?.call(),
-      failure: (error) async => _onError?.call(error),
-    );
+  /// Executes the action with the argument.
+  Future<void> execute(A argument) async {
+    await _execute(() => _action(argument));
   }
 }

@@ -6,7 +6,7 @@ import 'task_commands.dart';
 /// ViewModel para gerenciar estado e lógica da lista de tarefas
 /// 
 /// Usa ChangeNotifier para notificar a UI sobre mudanças de estado.
-/// Implementa o padrão Command para operações assíncronas.
+/// Implementa o padrão Command oficial do Flutter para operações assíncronas.
 class TaskViewModel extends ChangeNotifier {
   final TaskRepository _repository;
   
@@ -14,7 +14,18 @@ class TaskViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  TaskViewModel(this._repository);
+  // Commands para operações CRUD
+  late final Command1<Task, CreateTaskData> createTaskCommand;
+  late final Command1<Task, ({String id, UpdateTaskData data})> updateTaskCommand;
+  late final Command1<void, String> deleteTaskCommand;
+  late final Command1<Task, String> completeTaskCommand;
+  late final Command1<Task, String> uncompleteTaskCommand;
+  late final Command0<List<Task>> loadTasksCommand;
+
+  TaskViewModel(this._repository) {
+    _initializeCommands();
+    _setupCommandListeners();
+  }
 
   // Getters para acesso ao estado
   List<Task> get tasks => List.unmodifiable(_tasks);
@@ -28,80 +39,133 @@ class TaskViewModel extends ChangeNotifier {
   int get completedCount => completedTasks.length;
   int get pendingCount => pendingTasks.length;
 
+  /// Inicializa todos os comandos
+  void _initializeCommands() {
+    // Comando para carregar tarefas
+    loadTasksCommand = Command0<List<Task>>(() async {
+      return await _repository.getTasks();
+    });
+
+    // Comando para criar tarefa
+    createTaskCommand = Command1<Task, CreateTaskData>((data) async {
+      final result = await _repository.createTask(data);
+      if (result.isSuccess) {
+        // Recarrega as tarefas após criar
+        await loadTasksCommand.execute();
+      }
+      return result;
+    });
+
+    // Comando para atualizar tarefa
+    updateTaskCommand = Command1<Task, ({String id, UpdateTaskData data})>((params) async {
+      final result = await _repository.updateTask(params.id, params.data);
+      if (result.isSuccess) {
+        // Recarrega as tarefas após atualizar
+        await loadTasksCommand.execute();
+      }
+      return result;
+    });
+
+    // Comando para deletar tarefa
+    deleteTaskCommand = Command1<void, String>((id) async {
+      final result = await _repository.deleteTask(id);
+      if (result.isSuccess) {
+        // Recarrega as tarefas após deletar
+        await loadTasksCommand.execute();
+      }
+      return result;
+    });
+
+    // Comando para completar tarefa
+    completeTaskCommand = Command1<Task, String>((id) async {
+      final updateData = UpdateTaskData(isCompleted: true);
+      final result = await _repository.updateTask(id, updateData);
+      if (result.isSuccess) {
+        // Recarrega as tarefas após completar
+        await loadTasksCommand.execute();
+      }
+      return result;
+    });
+
+    // Comando para descompletar tarefa
+    uncompleteTaskCommand = Command1<Task, String>((id) async {
+      final updateData = UpdateTaskData(isCompleted: false);
+      final result = await _repository.updateTask(id, updateData);
+      if (result.isSuccess) {
+        // Recarrega as tarefas após descompletar
+        await loadTasksCommand.execute();
+      }
+      return result;
+    });
+  }
+
+  /// Configura listeners para os comandos
+  void _setupCommandListeners() {
+    // Listener para loadTasksCommand
+    loadTasksCommand.addListener(() {
+      _setLoading(loadTasksCommand.running);
+      
+      final result = loadTasksCommand.result;
+      if (result != null) {
+        result.when(
+          success: (tasks) {
+            _setTasks(tasks);
+            _setError(null);
+          },
+          failure: (error) => _setError(error),
+        );
+      }
+    });
+
+    // Listeners para comandos que mostram erros
+    _addErrorListener(createTaskCommand);
+    _addErrorListener(updateTaskCommand);
+    _addErrorListener(deleteTaskCommand);
+    _addErrorListener(completeTaskCommand);
+    _addErrorListener(uncompleteTaskCommand);
+  }
+
+  /// Adiciona listener de erro para um comando
+  void _addErrorListener(Command command) {
+    command.addListener(() {
+      final result = command.result;
+      if (result != null && result.isFailure) {
+        result.when(
+          success: (_) {},
+          failure: (error) => _setError(error),
+        );
+      }
+    });
+  }
+
   /// Carrega todas as tarefas
   Future<void> loadTasks() async {
-    _setLoading(true);
-    _setError(null);
-
-    final result = await _repository.getTasks();
-    
-    result.when(
-      success: (tasks) => _setTasks(tasks),
-      failure: (error) => _setError(error),
-    );
-    
-    _setLoading(false);
+    await loadTasksCommand.execute();
   }
 
   /// Cria uma nova tarefa
   Future<void> createTask(CreateTaskData data) async {
-    final command = CreateTaskCommand(
-      _repository,
-      data,
-      onSuccess: loadTasks, // Recarrega a lista após sucesso
-      onError: (error) => _setError(error),
-    );
-    
-    await command.execute();
+    await createTaskCommand.execute(data);
   }
 
   /// Atualiza uma tarefa existente
   Future<void> updateTask(String id, UpdateTaskData data) async {
-    final command = UpdateTaskCommand(
-      _repository,
-      id,
-      data,
-      onSuccess: loadTasks, // Recarrega a lista após sucesso
-      onError: (error) => _setError(error),
-    );
-    
-    await command.execute();
+    await updateTaskCommand.execute((id: id, data: data));
   }
 
   /// Exclui uma tarefa
   Future<void> deleteTask(String id) async {
-    final command = DeleteTaskCommand(
-      _repository,
-      id,
-      onSuccess: loadTasks, // Recarrega a lista após sucesso
-      onError: (error) => _setError(error),
-    );
-    
-    await command.execute();
+    await deleteTaskCommand.execute(id);
   }
 
   /// Marca uma tarefa como concluída
   Future<void> completeTask(String id) async {
-    final command = CompleteTaskCommand(
-      _repository,
-      id,
-      onSuccess: loadTasks, // Recarrega a lista após sucesso
-      onError: (error) => _setError(error),
-    );
-    
-    await command.execute();
+    await completeTaskCommand.execute(id);
   }
 
   /// Marca uma tarefa como não concluída
   Future<void> uncompleteTask(String id) async {
-    final command = UncompleteTaskCommand(
-      _repository,
-      id,
-      onSuccess: loadTasks, // Recarrega a lista após sucesso
-      onError: (error) => _setError(error),
-    );
-    
-    await command.execute();
+    await uncompleteTaskCommand.execute(id);
   }
 
   /// Alterna o status de conclusão de uma tarefa
@@ -155,7 +219,14 @@ class TaskViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    // Cleanup se necessário
+    // Dispose dos comandos
+    loadTasksCommand.dispose();
+    createTaskCommand.dispose();
+    updateTaskCommand.dispose();
+    deleteTaskCommand.dispose();
+    completeTaskCommand.dispose();
+    uncompleteTaskCommand.dispose();
+    
     super.dispose();
   }
 }
