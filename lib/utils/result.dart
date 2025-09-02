@@ -42,18 +42,6 @@ sealed class Result<T> {
         Error(:final error) => Result.error(transform(error)),
       };
 
-  /// Processa tanto o caso de sucesso quanto de erro e retorna um único valor.
-  ///
-  /// É útil para conversão de Result → qualquer outro tipo (`String`, `Widget`, etc.).
-  R fold<R>({
-    required R Function(T value) onOk,
-    required R Function(Exception error) onError,
-  }) =>
-      switch (this) {
-        Ok(:final value) => onOk(value),
-        Error(:final error) => onError(error),
-      };
-
   // ---------------------------------------------------------------------------
   // Getters úteis
   // ---------------------------------------------------------------------------
@@ -130,4 +118,137 @@ extension ResultAsyncExt<T> on Result<T> {
         Ok(:final value) => await transform(value),
         Error(:final error) => Result.error(error),
       };
+}
+
+extension FutureResultExt<T> on Future<Result<T>> {
+  /// Aplica uma transformação sobre o valor de sucesso de um Future<Result<T>>.
+  ///
+  /// Permite encadear operações sem usar .then()
+  /// 
+  /// Exemplo:
+  /// ```dart
+  /// final result = await apiCall()
+  ///   .mapAsync((data) => processData(data))
+  ///   .mapAsync((processed) => saveData(processed));
+  /// ```
+  Future<Result<R>> mapAsync<R>(
+    Future<R> Function(T value) transform,
+  ) async {
+    final result = await this;
+    return switch (result) {
+      Ok(:final value) => Result.ok(await transform(value)),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  /// Aplica uma transformação síncrona sobre o valor de sucesso.
+  ///
+  /// Exemplo:
+  /// ```dart
+  /// final result = await apiCall()
+  ///   .map((data) => data.length);
+  /// ```
+  Future<Result<R>> map<R>(
+    R Function(T value) transform,
+  ) async {
+    final result = await this;
+    return switch (result) {
+      Ok(:final value) => Result.ok(transform(value)),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  /// Aplica uma transformação que retorna outro Future<Result<R>>.
+  ///
+  /// Evita Future<Result<Result<T>>> aninhados.
+  /// 
+  /// Exemplo:
+  /// ```dart
+  /// final result = await getUserId()
+  ///   .flatMapAsync((id) => getUserProfile(id))
+  ///   .flatMapAsync((profile) => getUserPreferences(profile.id));
+  /// ```
+  Future<Result<R>> flatMapAsync<R>(
+    Future<Result<R>> Function(T value) transform,
+  ) async {
+    final result = await this;
+    return switch (result) {
+      Ok(:final value) => await transform(value),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  /// Aplica uma transformação que retorna outro Result<R>.
+  ///
+  /// Exemplo:
+  /// ```dart
+  /// final result = await apiCall()
+  ///   .flatMap((data) => validateData(data));
+  /// ```
+  Future<Result<R>> flatMap<R>(
+    Result<R> Function(T value) transform,
+  ) async {
+    final result = await this;
+    return switch (result) {
+      Ok(:final value) => transform(value),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  /// Executa uma ação apenas se o resultado for sucesso.
+  ///
+  /// Exemplo:
+  /// ```dart
+  /// await apiCall()
+  ///   .onSuccess((data) async => await logSuccess(data))
+  ///   .onError((error) async => await logError(error));
+  /// ```
+  Future<Result<T>> onSuccess(
+    Future<void> Function(T value) action,
+  ) async {
+    final result = await this;
+    if (result case Ok(:final value)) {
+      await action(value);
+    }
+    return result;
+  }
+
+  /// Executa uma ação apenas se o resultado for erro.
+  Future<Result<T>> onError(
+    Future<void> Function(AppException error) action,
+  ) async {
+    final result = await this;
+    if (result case Error(:final error)) {
+      await action(error);
+    }
+    return result;
+  }
+
+  /// Transforma erro em um valor padrão.
+  ///
+  /// Exemplo:
+  /// ```dart
+  /// final data = await apiCall()
+  ///   .recover((error) => defaultData);
+  /// ```
+  Future<Result<T>> recover(
+    T Function(AppException error) recovery,
+  ) async {
+    final result = await this;
+    return switch (result) {
+      Ok() => result,
+      Error(:final error) => Result.ok(recovery(error)),
+    };
+  }
+
+  /// Transforma erro usando uma função assíncrona.
+  Future<Result<T>> recoverAsync(
+    Future<T> Function(AppException error) recovery,
+  ) async {
+    final result = await this;
+    return switch (result) {
+      Ok() => result,
+      Error(:final error) => Result.ok(await recovery(error)),
+    };
+  }
 }

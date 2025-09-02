@@ -30,6 +30,7 @@ abstract class Command<T> extends ChangeNotifier {
 
   AppException? get exception => _result is Error<T> ? (_result as Error<T>).error : null;
 
+  String? get errorMessage => exception?.message;
 
   /// Clear last action result
   void clearResult() {

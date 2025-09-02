@@ -10,18 +10,12 @@ abstract interface class TaskRepository {
   /// Busca todas as tarefas
   Future<Result<List<Task>>> getTasks();
 
-  /// Busca uma tarefa específica por ID
-  Future<Result<Task>> getTask(String id);
-
   /// Cria uma nova tarefa
-  Future<Result<Task>> createTask(Task data);
+  Future<Result<void>> createTask(Task data);
 
   /// Atualiza uma tarefa existente
-  Future<Result<Task>> updateTask(String id, Task data);
+  Future<Result<void>> updateTask(Task data);
 
   /// Remove uma tarefa
   Future<Result<void>> deleteTask(String id);
-
-  /// Stream de mudanças nas tarefas (para updates em tempo real)
-  Stream<List<Task>> get taskStream;
 }
