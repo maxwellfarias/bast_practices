@@ -26,21 +26,21 @@ class TaskRepositoryImpl implements TaskRepository {
   }
   
   @override
-  Future<Result<void>> createTask(Task data) async {
-      return await _apiService.request(url: Urls.createTask, metodo: MetodoHttp.post, body: data.toJson(), headers: { 'apikey': apiKey, 'Authorization': 'Bearer $apiKey'})
+  Future<Result<void>> createTask({required Task task}) async {
+      return await _apiService.request(url: Urls.createTask, metodo: MetodoHttp.post, body: task.toJson(), headers: { 'apikey': apiKey, 'Authorization': 'Bearer $apiKey'})
         .map((_) => Result.ok(null));
   }
   
   @override
-  Future<Result<void>> deleteTask(String id) async {
+  Future<Result<void>> deleteTask({required String id}) async {
       return await _apiService.request(url: Urls.deleteTaskUrl(id), metodo: MetodoHttp.delete, headers: {'apikey': apiKey, 'Authorization': 'Bearer $apiKey'})
         .map((_) => Result.ok(null));
   }
   
   @override
-  Future<Result<void>> updateTask(Task data) async {
+  Future<Result<void>> updateTask({required Task task}) async {
       return await _apiService.request(
-        url: Urls.updateTaskUrl(data.id), metodo: MetodoHttp.put, headers: {'apikey': apiKey, 'Authorization': 'Bearer $apiKey'},body: data.toJson())
+        url: Urls.updateTaskUrl(task.id), metodo: MetodoHttp.put, headers: {'apikey': apiKey, 'Authorization': 'Bearer $apiKey'},body: task.toJson())
           .map((_) => Result.ok(null));
   }
 }

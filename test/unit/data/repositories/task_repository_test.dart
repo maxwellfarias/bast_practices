@@ -161,7 +161,7 @@ void main() {
             )).thenAnswer((_) async => Result.ok({'status': 'created'}));
 
         // Act
-        final result = await repository.createTask(task);
+        final result = await repository.createTask(task: task);
 
         // Assert
         expect(result.isOk, isTrue);
@@ -192,7 +192,7 @@ void main() {
             )).thenAnswer((_) async => Result.error(ErroDeComunicacaoException()));
 
         // Act
-        final result = await repository.createTask(task);
+        final result = await repository.createTask(task: task);
 
         // Assert
         expect(result.isError, isTrue);
@@ -220,7 +220,7 @@ void main() {
             )).thenAnswer((_) async => Result.error(ErroInternoServidorException()));
 
         // Act
-        final result = await repository.createTask(task);
+        final result = await repository.createTask(task: task);
 
         // Assert
         expect(result.isError, isTrue);
@@ -251,7 +251,7 @@ void main() {
             )).thenAnswer((_) async => Result.ok({'status': 'updated'}));
 
         // Act
-        final result = await repository.updateTask(task);
+        final result = await repository.updateTask(task: task);
 
         // Assert
         expect(result.isOk, isTrue);
@@ -282,7 +282,7 @@ void main() {
             )).thenAnswer((_) async => Result.error(RecursoNaoEncontradoException()));
 
         // Act
-        final result = await repository.updateTask(task);
+        final result = await repository.updateTask(task: task);
 
         // Assert
         expect(result.isError, isTrue);
@@ -310,7 +310,7 @@ void main() {
             )).thenAnswer((_) async => Result.error(SessaoExpiradaException()));
 
         // Act
-        final result = await repository.updateTask(task);
+        final result = await repository.updateTask(task: task);
 
         // Assert
         expect(result.isError, isTrue);
@@ -333,7 +333,7 @@ void main() {
             )).thenAnswer((_) async => Result.ok(null));
 
         // Act
-        final result = await repository.deleteTask(taskId);
+        final result = await repository.deleteTask(id: taskId);
 
         // Assert
         expect(result.isOk, isTrue);
@@ -356,7 +356,7 @@ void main() {
             )).thenAnswer((_) async => Result.error(RecursoNaoEncontradoException()));
 
         // Act
-        final result = await repository.deleteTask(taskId);
+        final result = await repository.deleteTask(id: taskId);
 
         // Assert
         expect(result.isError, isTrue);
@@ -377,7 +377,7 @@ void main() {
             )).thenAnswer((_) async => Result.error(AcessoNegadoException()));
 
         // Act
-        final result = await repository.deleteTask(taskId);
+        final result = await repository.deleteTask(id: taskId);
 
         // Assert
         expect(result.isError, isTrue);
@@ -398,7 +398,7 @@ void main() {
             )).thenAnswer((_) async => Result.error(ServidorIndisponivelException()));
 
         // Act
-        final result = await repository.deleteTask(taskId);
+        final result = await repository.deleteTask(id: taskId);
 
         // Assert
         expect(result.isError, isTrue);
@@ -429,9 +429,9 @@ void main() {
 
         // Act - Test all operations
         await repository.getTasks();
-        await repository.createTask(task);
-        await repository.updateTask(task);
-        await repository.deleteTask('1');
+        await repository.createTask(task: task);
+        await repository.updateTask(task: task);
+        await repository.deleteTask(id: '1');
 
         // Assert - Verify all methods were called (4 total calls)
         verify(() => mockApiClient.request(
@@ -512,9 +512,9 @@ void main() {
         // Act
         final results = await Future.wait([
           repository.getTasks(),
-          repository.createTask(task),
-          repository.updateTask(task),
-          repository.deleteTask('1'),
+          repository.createTask(task: task),
+          repository.updateTask(task: task),
+          repository.deleteTask(id: '1'),
         ]);
 
         // Assert
