@@ -3,7 +3,6 @@ import 'package:mastering_tests/config/dependencies.dart';
 import 'package:mastering_tests/routing/router.dart';
 import 'package:provider/provider.dart';
 
-
 void main() {
   runApp( MultiProvider(providers: providers, child: MyApp()));
 }
