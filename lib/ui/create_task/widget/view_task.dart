@@ -4,7 +4,7 @@ import 'package:mastering_tests/routing/navigation_extensions.dart';
 class ViewTaskScreen extends StatefulWidget {
   final Map<String, dynamic> task;
 
-  const ViewTaskScreen({Key? key, required this.task}) : super(key: key);
+  const ViewTaskScreen({super.key, required this.task});
 
   @override
   State<ViewTaskScreen> createState() => _ViewTaskScreenState();
@@ -142,15 +142,6 @@ class _ViewTaskScreenState extends State<ViewTaskScreen> {
                                   color: Color(0xFF1D1D1F),
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.task['category'],
-                                style: const TextStyle(
-                                  color: Color(0xFF6E6E73),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
