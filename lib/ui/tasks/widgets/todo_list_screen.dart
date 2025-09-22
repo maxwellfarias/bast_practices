@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:mastering_tests/domain/models/task_model.dart';
 import 'package:mastering_tests/ui/tasks/view_model/task_view_model.dart';
-import 'package:provider/provider.dart';
 
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({required this.viewModel, super.key});
-
   final TaskViewModel viewModel;
 
   @override
@@ -12,171 +11,219 @@ class TodoListScreen extends StatefulWidget {
 }
 
 class _TodoListScreenState extends State<TodoListScreen> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
-  initState() {
+  void initState() {
     super.initState();
-    widget.viewModel.getTasks.addListener(_onGetTasksResult);
+    widget.viewModel.getTasks.execute();
   }
 
   @override
   void dispose() {
-    widget.viewModel.getTasks.removeListener(_onGetTasksResult);
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _searchController.dispose();
     super.dispose();
-  }
-
-  final _tasks = <TaskItem>[];
-
-  _onGetTasksResult() {
-    if (mounted && widget.viewModel.getTasks.completed) {
-      final List<TaskItem> tasks = widget.viewModel.getTasks.value ?? [];
-      // Handle the result of the getTasks call
-    }
-  }
-  String selectedFilter = 'All';
-  int get totalTasks => _tasks.length;
-  int get completedTasks => _tasks.where((task) => task.isCompleted).length;
-
-  List<TaskItem> get filteredTasks {
-    switch (selectedFilter) {
-      case 'Active':
-        return _tasks.where((task) => !task.isCompleted).toList();
-      case 'Completed':
-        return _tasks.where((task) => task.isCompleted).toList();
-      default:
-        return _tasks;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB), // bg-gray-50
-      body: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: _buildMainContent(),
-          ),
-        ],
+      appBar: AppBar(
+        title: const Text('Todo List'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
-      floatingActionButton: _buildFloatingActionButton(),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Seção para buscar tarefa por ID
+            _buildSearchSection(),
+
+            const SizedBox(height: 16),
+
+            Expanded(child: _buildTasksList()),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddTaskDialog(),
+        child: Icon(Icons.add),
+        tooltip: 'Atualizar lista',
+      ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
-        border: const Border(
-          bottom: BorderSide(color: Color(0xFFE5E7EB)), // border-gray-200
+  Widget _buildSearchSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Buscar Tarefa por ID',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Digite o ID da tarefa',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _searchTaskById,
+                  child: const Text('Buscar'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: MediaQuery.of(context).size.width > 768 ? 40 : 16,
-            vertical: 16,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0FBF4), // mint-green
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.task_alt,
-                      color: Color(0xFF059669), // green-600
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'My Todo List',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937), // text-gray-800
-                    ),
-                  ),
-                ],
+    );
+  }
+
+  Widget _buildTasksList() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Lista de Tarefas',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: AnimatedBuilder(
+                animation: widget.viewModel.getTasks,
+                builder: (context, child) {
+                  if (widget.viewModel.getTasks.running) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (widget.viewModel.getTasks.error) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error, color: Colors.red, size: 48),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Erro: ${widget.viewModel.getTasks.errorMessage ?? "Erro desconhecido"}',
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () =>
+                                widget.viewModel.getTasks.execute(),
+                            child: const Text('Tentar Novamente'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final tasks = widget.viewModel.getTasks.value ?? [];
+
+                  if (tasks.isEmpty) {
+                    return const Center(
+                      child: Text('Nenhuma tarefa encontrada'),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = tasks[index];
+                      return _buildTaskCard(task);
+                    },
+                  );
+                },
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6), // bg-gray-100
-                  borderRadius: BorderRadius.circular(20),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTaskCard(TaskModel task) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    task.title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      decoration: task.isCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$totalTasks',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Tasks',
-                      style: TextStyle(
-                        color: Color(0xFF6B7280), // text-gray-500
-                        fontSize: 14,
-                      ),
-                    ),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 8),
-                      width: 1,
-                      height: 16,
-                      color: const Color(0xFFD1D5DB), // bg-gray-300
-                    ),
-                    Text(
-                      '$completedTasks',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Completed',
-                      style: TextStyle(
-                        color: Color(0xFF6B7280), // text-gray-500
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+                Checkbox(
+                  value: task.isCompleted,
+                  onChanged: (value) => _toggleTaskCompletion(task),
+                ),
+              ],
+            ),
+            if (task.description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                task.description,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  decoration: task.isCompleted
+                      ? TextDecoration.lineThrough
+                      : null,
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMainContent() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final horizontalPadding = screenWidth > 1024 ? 96.0 : screenWidth > 768 ? 40.0 : 16.0;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: Column(
-          children: [
-            _buildFilterButtons(),
-            const SizedBox(height: 24),
-            Expanded(
-              child: _buildTaskGrid(),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'ID: ${task.id}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      onPressed: () => _editTask(task),
+                      tooltip: 'Editar',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      onPressed: () => _deleteTask(task.id),
+                      tooltip: 'Excluir',
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -184,234 +231,235 @@ class _TodoListScreenState extends State<TodoListScreen> {
     );
   }
 
-  Widget _buildFilterButtons() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6), // bg-gray-100
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: ['All', 'Active', 'Completed'].map((filter) {
-            final isSelected = selectedFilter == filter;
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedFilter = filter;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Text(
-                  filter,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected
-                        ? const Color(0xFF1F2937)
-                        : const Color(0xFF6B7280),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTaskGrid() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    int crossAxisCount;
-    if (screenWidth > 1024) {
-      crossAxisCount = 3;
-    } else if (screenWidth > 640) {
-      crossAxisCount = 2;
-    } else {
-      crossAxisCount = 1;
+  void _searchTaskById() async {
+    final id = _searchController.text.trim();
+    if (id.isEmpty) {
+      _showMessage('Por favor, digite um ID válido');
+      return;
     }
 
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: 1.5,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
-      ),
-      itemCount: filteredTasks.length,
-      itemBuilder: (context, index) {
-        return _buildTaskCard(filteredTasks[index]);
-      },
-    );
+    await widget.viewModel.getTaskById.execute(id);
+
+    if (widget.viewModel.getTaskById.completed) {
+      final task = widget.viewModel.getTaskById.value!;
+      _showTaskDialog(task);
+    } else if (widget.viewModel.getTaskById.error) {
+      _showMessage(
+        'Erro ao buscar tarefa: ${widget.viewModel.getTaskById.errorMessage}',
+      );
+    }
   }
 
-  Widget _buildTaskCard(TaskItem task) {
-    return MouseRegion(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
+  void _toggleTaskCompletion(TaskModel task) async {
+    final updatedTask = task.copyWith(
+      isCompleted: !task.isCompleted,
+      completedAt: !task.isCompleted ? DateTime.now() : null,
+    );
+
+    await widget.viewModel.updateTask.execute(updatedTask);
+
+    if (widget.viewModel.updateTask.completed) {
+      widget.viewModel.getTasks.execute();
+    } else if (widget.viewModel.updateTask.error) {
+      _showMessage(
+        'Erro ao atualizar tarefa: ${widget.viewModel.updateTask.errorMessage}',
+      );
+    }
+  }
+
+  void _editTask(TaskModel task) {
+    _titleController.text = task.title;
+    _descriptionController.text = task.description;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Tarefa'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Checkbox(
-                          value: task.isCompleted,
-                          onChanged: (value) {
-                            setState(() {
-                              task.isCompleted = value ?? false;
-                            });
-                          },
-                          activeColor: const Color(0xFF10B981),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                task.title,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: task.isCompleted
-                                      ? const Color(0xFF9CA3AF)
-                                      : const Color(0xFF1F2937),
-                                  decoration: task.isCompleted
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                task.description,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: const Color(0xFF6B7280),
-                                  decoration: task.isCompleted
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                'Created: ${task.createdAt}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF9CA3AF),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildActionButton(Icons.edit, () {}),
-                        const SizedBox(width: 8),
-                        _buildActionButton(Icons.delete, () {}, isDelete: true),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Título'),
             ),
-            Container(
-              height: 4,
-              color: task.accentColor,
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Descrição'),
+              maxLines: 2,
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final updatedTask = task.copyWith(
+                title: _titleController.text.trim(),
+                description: _descriptionController.text.trim(),
+              );
+
+              await widget.viewModel.updateTask.execute(updatedTask);
+
+              if (widget.viewModel.updateTask.completed) {
+                Navigator.pop(context);
+                _titleController.clear();
+                _descriptionController.clear();
+                _showMessage('Tarefa atualizada com sucesso!');
+                widget.viewModel.getTasks.execute();
+              } else if (widget.viewModel.updateTask.error) {
+                _showMessage(
+                  'Erro ao atualizar tarefa: ${widget.viewModel.updateTask.errorMessage}',
+                );
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildActionButton(IconData icon, VoidCallback onTap, {bool isDelete = false}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(16),
+  void _deleteTask(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Exclusão'),
+        content: const Text('Tem certeza que deseja excluir esta tarefa?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await widget.viewModel.deleteTask.execute(id);
+
+              if (widget.viewModel.deleteTask.completed) {
+                Navigator.pop(context);
+                _showMessage('Tarefa excluída com sucesso!');
+                widget.viewModel.getTasks.execute();
+              } else if (widget.viewModel.deleteTask.error) {
+                _showMessage(
+                  'Erro ao excluir tarefa: ${widget.viewModel.deleteTask.errorMessage}',
+                );
+              }
+            },
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _showAddTaskDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Adicionar Nova Tarefa'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Título'),
+            ),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Descrição'),
+              maxLines: 2,
+            ),
+          ],
         ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: isDelete ? const Color(0xFFEF4444) : const Color(0xFF6B7280),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _titleController.clear();
+              _descriptionController.clear();
+              Navigator.pop(context);
+            },
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final title = _titleController.text.trim();
+              final description = _descriptionController.text.trim();
+
+              if (title.isEmpty) {
+                _showMessage('Por favor, digite um título para a tarefa');
+                return;
+              }
+
+              final newTask = TaskModel(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                title: title,
+                description: description,
+                isCompleted: false,
+                createdAt: DateTime.now(),
+              );
+
+              await widget.viewModel.addTask.execute(newTask);
+
+              if (widget.viewModel.addTask.completed) {
+                _titleController.clear();
+                _descriptionController.clear();
+                Navigator.pop(context);
+                _showMessage('Tarefa adicionada com sucesso!');
+                widget.viewModel.getTasks.execute();
+              } else if (widget.viewModel.addTask.error) {
+                _showMessage(
+                  'Erro ao adicionar tarefa: ${widget.viewModel.addTask.errorMessage}',
+                );
+              }
+            },
+            child: const Text('Adicionar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTaskDialog(TaskModel task) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(task.title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('ID: ${task.id}'),
+            const SizedBox(height: 8),
+            Text('Descrição: ${task.description}'),
+            const SizedBox(height: 8),
+            Text('Status: ${task.isCompleted ? "Concluída" : "Pendente"}'),
+            const SizedBox(height: 8),
+            Text('Criada em: ${_formatDate(task.createdAt)}'),
+            if (task.completedAt != null) ...[
+              const SizedBox(height: 8),
+              Text('Concluída em: ${_formatDate(task.completedAt!)}'),
+            ],
+          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fechar'),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildFloatingActionButton() {
-    return FloatingActionButton(
-      onPressed: () {
-        // Adicionar nova tarefa
-      },
-      backgroundColor: const Color(0xFF10B981),
-      child: const Icon(
-        Icons.add,
-        color: Colors.white,
-        size: 24,
-      ),
-    );
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
-}
 
-class TaskItem {
-  String title;
-  String description;
-  String createdAt;
-  bool isCompleted;
-  Color accentColor;
-
-  TaskItem({
-    required this.title,
-    required this.description,
-    required this.createdAt,
-    required this.isCompleted,
-    required this.accentColor,
-  });
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
 }

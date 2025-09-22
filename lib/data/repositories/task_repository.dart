@@ -1,21 +1,29 @@
-import '../../domain/models/task.dart';
+import 'package:mastering_tests/domain/models/task_model.dart';
+
 import '../../utils/result.dart';
 
-/// Interface do repositório de tarefas
-/// 
-/// Define o contrato para operações CRUD de tarefas.
-/// Esta interface permite inversão de dependência e facilita testes
-/// através de mocking.
+
 abstract interface class TaskRepository {
-  /// Busca todas as tarefas
-  Future<Result<List<Task>>> getTasks();
 
-  /// Cria uma nova tarefa
-  Future<Result<void>> createTask(Task data);
-
-  /// Atualiza uma tarefa existente
-  Future<Result<void>> updateTask(Task data);
-
-  /// Remove uma tarefa
-  Future<Result<void>> deleteTask(String id);
+  Future<Result<List<TaskModel>>> getAllTasks({required String databaseId});
+  Future<Result<TaskModel>> getTaskBy({required String databaseId, required String taskId});
+  Future<Result<TaskModel>> createTask({required String databaseId, required TaskModel task});
+  Future<Result<TaskModel>> updateTask({required String databaseId, required TaskModel task});
+  Future<Result<TaskModel>> deleteTask({required String databaseId, required String taskId});
 }
+
+
+/*
+
+{
+    public interface IAlunosRepository
+    {
+        Task<List<Alunos>> GetAllAsync(int numeroBanco);
+        Task<Alunos?>      GetByIdAsync(int numeroBanco, int id);
+        Task<Alunos>       CreateAsync(int numeroBanco, Alunos usuario);
+        Task<Alunos>       UpdateAsync(int numeroBanco, Alunos usuario);
+        Task<bool>         DeleteAsync(int numeroBanco, int id);
+    }
+}
+
+ */

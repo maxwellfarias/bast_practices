@@ -1,7 +1,7 @@
-import '../../domain/models/task.dart';
+import 'package:mastering_tests/domain/models/task_model.dart';
 
 /// Modelo de API para serialização/deserialização JSON
-/// 
+///
 /// Representa como os dados da tarefa são recebidos/enviados para a API.
 /// Separado do modelo de domínio para permitir evolução independente.
 class TaskApiModel {
@@ -48,8 +48,8 @@ class TaskApiModel {
   }
 
   /// Converte para modelo de domínio
-  Task toDomain() {
-    return Task(
+  TaskModel toDomain() {
+    return TaskModel(
       id: id,
       title: title,
       description: description,
@@ -60,7 +60,7 @@ class TaskApiModel {
   }
 
   /// Cria modelo da API a partir do modelo de domínio
-  factory TaskApiModel.fromDomain(Task task) {
+  factory TaskApiModel.fromDomain(TaskModel task) {
     return TaskApiModel(
       id: task.id,
       title: task.title,

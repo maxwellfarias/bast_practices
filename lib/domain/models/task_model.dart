@@ -1,10 +1,9 @@
-
 /// Modelo de domínio para uma tarefa
-/// 
+///
 /// Representa uma tarefa no sistema com todos os dados necessários
 /// para a lógica de negócio. Usa Equatable para facilitar comparações
 /// em testes.
-final class Task {
+final class TaskModel {
   final String id;
   final String title;
   final String description;
@@ -12,7 +11,7 @@ final class Task {
   final DateTime createdAt;
   final DateTime? completedAt;
 
-  const Task({
+  const TaskModel({
     required this.id,
     required this.title,
     required this.description,
@@ -21,13 +20,15 @@ final class Task {
     this.completedAt,
   });
 
-  factory Task.fromJson(dynamic json) {
-    return Task(
+  factory TaskModel.fromJson(dynamic json) {
+    return TaskModel(
       id: json['id'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       isCompleted: json['is_completed'] ?? false,
-      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toString()),
+      createdAt: DateTime.parse(
+        json['created_at'] ?? DateTime.now().toString(),
+      ),
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'])
           : null,
@@ -46,7 +47,7 @@ final class Task {
   }
 
   /// Cria uma cópia da tarefa com alguns campos atualizados
-  Task copyWith({
+  TaskModel copyWith({
     String? id,
     String? title,
     String? description,
@@ -54,7 +55,7 @@ final class Task {
     DateTime? createdAt,
     DateTime? completedAt,
   }) {
-    return Task(
+    return TaskModel(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
@@ -75,6 +76,10 @@ final class Task {
         'completedAt: $completedAt'
         ')';
   }
-
-
 }
+
+
+
+
+
+

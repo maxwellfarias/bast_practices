@@ -13,6 +13,6 @@ List<SingleChildWidget> get providers {
     Provider(create: (_) => Dio()),
     Provider(create: (context) => ApiClientImpl(dio: context.read<Dio>()) as ApiClient),
     Provider(create: (context) => TaskRepositoryImpl(apiService: context.read<ApiClient>()) as TaskRepository),
-    Provider(create: (context) => TaskViewModel(context.read<TaskRepository>())),
+    Provider(create: (context) => TaskViewModel(taskRepository: context.read<TaskRepository>())),
   ];
 }

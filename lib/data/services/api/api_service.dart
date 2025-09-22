@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:mastering_tests/exceptions/app_exception.dart';
 import 'package:mastering_tests/utils/result.dart';
-import '../../../domain/models/task.dart';
 import '../../models/task_api_model.dart';
 
 /// Interface para o serviço de API de tarefas
