@@ -17,7 +17,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
     super.initState();
     widget.viewModel.addListener(_onViewModelChanged);
     // Carregar as tarefas ao inicializar
-    widget.viewModel.getAllTasks.execute('default');
+    widget.viewModel.getAllTasks.execute();
   }
 
   @override
@@ -38,75 +38,86 @@ class _TodoListScreenState extends State<TodoListScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => widget.viewModel.getAllTasks.execute('default'),
+            onPressed: () => widget.viewModel.getAllTasks.execute(),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Status de loading
-          if (widget.viewModel.getAllTasks.running)
-            const LinearProgressIndicator(),
+      body: ListenableBuilder(
+        listenable: widget.viewModel,
+        builder: (context, _) {
+          if (widget.viewModel.getAllTasks.running) {
+            return const LinearProgressIndicator();
+          }
 
-            if (widget.viewModel.getAllTasks.error)
-              Padding(
+          if (widget.viewModel.getAllTasks.error) {
+            return Center(
+              child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
                   'Erro ao carregar tarefas: ${widget.viewModel.getAllTasks.error}',
                   style: const TextStyle(color: Colors.red),
                 ),
               ),
-          
-          // Lista de tarefas
-          Expanded(
-            child: widget.viewModel.tasks.isEmpty
-                ? const Center(
-                    child: Text('Nenhuma tarefa encontrada'),
-                  )
-                : ListView.builder(
-                    itemCount: widget.viewModel.tasks.length,
-                    itemBuilder: (context, index) {
-                      final task = widget.viewModel.tasks[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        child: ListTile(
-                          leading: Checkbox(
-                            value: task.isCompleted,
-                            onChanged: (value) => _toggleTaskCompletion(task),
-                          ),
-                          title: Text(
-                            task.title,
-                            style: TextStyle(
-                              decoration: task.isCompleted
-                                  ? TextDecoration.lineThrough
-                                  : TextDecoration.none,
+            );
+            ;
+          }
+
+          return Column(
+            children: [
+              // Status de loading
+
+              // Lista de tarefas
+              Expanded(
+                child: widget.viewModel.tasks.isEmpty
+                    ? const Center(child: Text('Nenhuma tarefa encontrada'))
+                    : ListView.builder(
+                        itemCount: widget.viewModel.tasks.length,
+                        itemBuilder: (context, index) {
+                          final task = widget.viewModel.tasks[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
                             ),
-                          ),
-                          subtitle: Text(task.description),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _editTask(task),
+                            child: ListTile(
+                              leading: Checkbox(
+                                value: task.isCompleted,
+                                onChanged: (value) =>
+                                    _toggleTaskCompletion(task),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () => _deleteTask(task.id),
+                              title: Text(
+                                task.title,
+                                style: TextStyle(
+                                  decoration: task.isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
                               ),
-                            ],
-                          ),
-                          onTap: () => _showTaskDetails(task),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                              subtitle: Text(task.description),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () => _editTask(task),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () => _deleteTask(task.id),
+                                  ),
+                                ],
+                              ),
+                              onTap: () => _showTaskDetails(task),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
+
       floatingActionButton: FloatingActionButton(
         onPressed: _createNewTask,
         child: const Icon(Icons.add),
@@ -240,7 +251,9 @@ class _TaskDialogState extends State<_TaskDialog> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.initialTitle ?? '');
-    _descriptionController = TextEditingController(text: widget.initialDescription ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.initialDescription ?? '',
+    );
   }
 
   @override
@@ -253,7 +266,9 @@ class _TaskDialogState extends State<_TaskDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.initialTitle != null ? 'Editar Tarefa' : 'Nova Tarefa'),
+      title: Text(
+        widget.initialTitle != null ? 'Editar Tarefa' : 'Nova Tarefa',
+      ),
       content: Form(
         key: _formKey,
         child: Column(

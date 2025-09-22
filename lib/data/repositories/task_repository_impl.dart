@@ -25,7 +25,7 @@ class TaskRepositoryImpl implements TaskRepository {
     
       @override
       Future<Result<List<TaskModel>>> getAllTasks({required String databaseId}) async {
-        return Result.ok(TaskMock.getMockTasks());
+        return TaskMock.getMockTasks();
       }
     
       @override

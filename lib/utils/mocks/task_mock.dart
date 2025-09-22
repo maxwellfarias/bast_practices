@@ -15,9 +15,10 @@ class TaskMock {
   }
   
   /// Retorna uma lista de dados fictícios de TaskModel
-  static List<TaskModel> getMockTasks() {
+  static Future<Result<List<TaskModel>>> getMockTasks() async {
     _initializeIfEmpty();
-    return List.from(_tasks);
+    await Future.delayed(const Duration(seconds: 2)); // Simula atraso de rede
+    return Result.ok(List.from(_tasks));
   }
   
   /// Gera os dados iniciais das tasks

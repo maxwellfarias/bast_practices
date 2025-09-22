@@ -6,7 +6,7 @@ import 'package:mastering_tests/utils/result.dart';
 
 final class TaskViewModel extends ChangeNotifier {
   TaskViewModel({required TaskRepository taskRepository}) : _taskRepository = taskRepository {
-    getAllTasks = Command1(_getAllTasks);
+    getAllTasks = Command0(_getAllTasks);
     getTaskBy = Command1(_getTaskBy);
     createTask = Command1(_createTask);
     updateTask = Command1(_updateTask);
@@ -15,14 +15,14 @@ final class TaskViewModel extends ChangeNotifier {
   final TaskRepository _taskRepository;
 
   final List<TaskModel> tasks = [];
-  late final Command1<List<TaskModel>, String> getAllTasks; 
+  late final Command0<List<TaskModel>> getAllTasks; 
   late final Command1<TaskModel, String> getTaskBy; 
   late final Command1<TaskModel, TaskModel> createTask; 
   late final Command1<TaskModel, TaskModel> updateTask; 
   late final Command1<dynamic, String> deleteTask; 
 
-  Future<Result<List<TaskModel>>> _getAllTasks(String databaseId) async {
-    return await _taskRepository.getAllTasks(databaseId: databaseId)
+  Future<Result<List<TaskModel>>> _getAllTasks() async {
+    return await _taskRepository.getAllTasks(databaseId: 'default')
     .map((tasks) {
       this.tasks
       ..clear()
