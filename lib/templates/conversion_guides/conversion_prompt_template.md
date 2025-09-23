@@ -1,53 +1,343 @@
 # 🚀 TEMPLATE DE PROMPT PARA CONVERSÃO REACT → FLUTTER
 
 ## 📋 CONTEXTO
-Preciso converter o componente React **`{NOME_COMPONENTE}`** para Flutter seguindo os padrões estabelecidos no projeto Palliative Care.
+Preciso converter o componente React **`{NOME_COMPONENTE}`** para Flutter seguindo os padrões estabelecidos no projeto, incluindo a arquitetura completa: Domain Model, Mock, Repository, ViewModel e Screen.
 
 ## 🎯 TAREFA PRINCIPAL
-Converta o código React anexado para Flutter mantendo:
-- **Layout responsivo idêntico** usando LayoutBuilder e breakpoints padrão
-- **Funcionalidades interativas** (modais, formulários, navegação, animações)
-- **Estilo visual consistente** usando CustomTextTheme e NewAppColorTheme
-- **Estrutura de componentes organizada** seguindo padrões do projeto
-- **Performance otimizada** com widgets const e gerenciamento eficiente de estado
+Converta o código React anexado para Flutter implementando a arquitetura completa:
+- **Domain Model**: Classe modelo de domínio com métodos obrigatórios
+- **Mock Data**: Classe mock para simulação de dados
+- **Repository Pattern**: Interface e implementação do repository
+- **ViewModel**: Gerenciamento de estado usando Command pattern
+- **UI Screen**: Tela Flutter com layout responsivo e funcionalidades completas
 
 ## 📁 ARQUIVOS DE REFERÊNCIA ANEXADOS
 - [ ] **Código React**: `lovable/src/pages/{nome_da_pagina}.tsx` - Componente principal a ser convertido
 - [ ] **CSS/Styles**: `lovable/src/index.css` ou arquivo de estilos relevante
+- [ ] **Domain Model**: `lib/domain/models/{NOME_MODELO}_model.dart` - **OBRIGATÓRIO: Informar path da classe modelo**
+- [ ] **App Exception**: `lib/exceptions/app_exception.dart` - Sistema de exceções
+- [ ] **Result Class**: `lib/utils/result.dart` - Wrapper para resultados
+- [ ] **Command Pattern**: `lib/utils/command.dart` - Sistema de comandos
 - [ ] **Guia de Conversão**: `lib/templates/conversion_guides/react_to_flutter_guide.md` - Referência completa
 - [ ] **Extensões Flutter**: `lib/ui/core/extensions/build_context_extension.dart` - Extensões de contexto
 - [ ] **Tema Flutter**: `lib/ui/core/themes/theme.dart` - Tema já configurado
-- [ ] **Cores**: `lib/ui/core/themes/new_colors.dart` - Paleta de cores do projeto
-- [ ] **Tipografia**: `lib/ui/core/themes/custom_text_style.dart` - Sistema tipográfico
 
 ## 🔧 REQUISITOS ESPECÍFICOS
 
-### 1. 🏗️ Estrutura Flutter
-- [ ] **Widget Principal**: Criar `StatefulWidget` em `lib/ui/{nome_tela}/widget/{nome_arquivo}.dart`
-- [ ] **Widgets Auxiliares**: Organizar em arquivos separados para componentes complexos
-- [ ] **Modelos de Dados**: Criar classes em `lib/domain/models/{nome_arquivo}_model.dart`
-- [ ] **Gerenciamento de Estado**: Usar `setState` para estados locais
-- [ ] **Imports**: Organizar imports em ordem: Flutter, packages, projeto
+### 🔹 ETAPA 1: DOMAIN MODEL (OBRIGATÓRIO)
+**Path**: `/lib/domain/models/{nome_da_classe}_model.dart`
 
-### 2. 🎨 Mapeamento de Estilos
-**Usar o guia de conversão para:**
-- [ ] **Tipografia**: Converter classes Tailwind para CustomTextTheme (ex: `text-xl font-bold` → `context.customTextTheme.textXlBold`)
-- [ ] **Cores**: Mapear variáveis CSS para NewAppColorTheme (ex: `--primary` → `context.customColorTheme.primary`)
-- [ ] **Layout Responsivo**: Implementar com LayoutBuilder usando breakpoints:
-  ```dart
-  // Mobile: < 640px (1 coluna)
-  // Tablet: 640-1024px (2 colunas)  
-  // Desktop: > 1024px (3+ colunas)
-  ```
-- [ ] **Espaçamentos**: Converter classes Tailwind (ex: `p-6` → `EdgeInsets.all(24)`)
-- [ ] **Sombras**: Mapear box-shadow para elevation ou BoxShadow
+Criar classe de domínio com métodos obrigatórios:
+- [ ] **Constructor**: Parâmetros required e opcionais
+- [ ] **fromJson**: Factory constructor para desserialização
+- [ ] **toJson**: Método para serialização
+- [ ] **copyWith**: Método para criar cópias com alterações
+- [ ] **toString**: Override para debugging
 
+```dart
+/// Modelo de domínio para {DESCRIÇÃO}
+final class {NOME_MODELO}Model {
+  final String id;
+  final String {CAMPO_1};
+  final String {CAMPO_2};
+  final bool {CAMPO_BOOLEAN};
+  final DateTime createdAt;
+  final DateTime? {CAMPO_OPCIONAL};
+
+  const {NOME_MODELO}Model({
+    required this.id,
+    required this.{CAMPO_1},
+    required this.{CAMPO_2},
+    required this.{CAMPO_BOOLEAN},
+    required this.createdAt,
+    this.{CAMPO_OPCIONAL},
+  });
+
+  factory {NOME_MODELO}Model.fromJson(dynamic json) {
+    return {NOME_MODELO}Model(
+      id: json['id'] ?? '',
+      {CAMPO_1}: json['{CAMPO_1}'] ?? '',
+      // ... implementar todos os campos
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      '{CAMPO_1}': {CAMPO_1},
+      // ... todos os campos
+    };
+  }
+
+  {NOME_MODELO}Model copyWith({
+    String? id,
+    String? {CAMPO_1},
+    // ... todos os campos opcionais
+  }) {
+    return {NOME_MODELO}Model(
+      id: id ?? this.id,
+      {CAMPO_1}: {CAMPO_1} ?? this.{CAMPO_1},
+      // ... implementação completa
+    );
+  }
+
+  @override
+  String toString() {
+    return '{NOME_MODELO}Model(id: $id, {CAMPO_1}: ${CAMPO_1}, ...)';
+  }
+}
+```
+
+### 🔹 ETAPA 2: MOCK DATA
+**Path**: `/lib/utils/mocks/{nome_da_classe}_mock.dart`
+
+Criar classe mock com operações CRUD completas:
+- [ ] **getMock{PLURAL}**: Retorna lista com Future.delayed (2s)
+- [ ] **add{NOME_MODELO}**: Adiciona novo item
+- [ ] **get{NOME_MODELO}ById**: Busca por ID
+- [ ] **update{NOME_MODELO}**: Atualiza existente
+- [ ] **delete{NOME_MODELO}**: Remove por ID
+- [ ] **clearAll{PLURAL}**: Limpa lista (para testes)
+- [ ] **resetToInitialState**: Restaura dados iniciais
+
+```dart
+/// Classe utilitária para dados fictícios de {NOME_MODELO}Model
+class {NOME_MODELO}Mock {
+  static List<{NOME_MODELO}Model> _{LISTA_PRIVADA} = [];
+  
+  static void _initializeIfEmpty() {
+    if (_{LISTA_PRIVADA}.isEmpty) {
+      _{LISTA_PRIVADA} = _generateInitial{PLURAL}();
+    }
+  }
+  
+  static Future<Result<List<{NOME_MODELO}Model>>> getMock{PLURAL}() async {
+    _initializeIfEmpty();
+    await Future.delayed(const Duration(seconds: 2));
+    return Result.ok(List.from(_{LISTA_PRIVADA}));
+  }
+  
+  static List<{NOME_MODELO}Model> _generateInitial{PLURAL}() {
+    final now = DateTime.now();
+    return [
+      // Gerar 6-8 itens mock realistas baseados no modelo React
+    ];
+  }
+  
+  // Implementar métodos CRUD completos conforme template
+}
+```
+
+### 🔹 ETAPA 3: REPOSITORY INTERFACE
+**Path**: `/lib/data/repositories/{nome_da_classe}/{nome_da_classe}_repository.dart`
+
+Interface com 5 métodos obrigatórios:
+- [ ] **getAll{PLURAL}({required String databaseId})**: Lista completa
+- [ ] **get{NOME_MODELO}By({required String databaseId, required String id})**: Item específico
+- [ ] **create{NOME_MODELO}({required String databaseId, required Model})**: Criar novo
+- [ ] **update{NOME_MODELO}({required String databaseId, required Model})**: Atualizar
+- [ ] **delete{NOME_MODELO}({required String databaseId, required String id})**: Deletar
+
+```dart
+abstract interface class {NOME_MODELO}Repository {
+  Future<Result<List<{NOME_MODELO}Model>>> getAll{PLURAL}({required String databaseId});
+  Future<Result<{NOME_MODELO}Model>> get{NOME_MODELO}By({required String databaseId, required String {NOME_MODELO_LOWER}Id});
+  Future<Result<{NOME_MODELO}Model>> create{NOME_MODELO}({required String databaseId, required {NOME_MODELO}Model {NOME_MODELO_LOWER}});
+  Future<Result<{NOME_MODELO}Model>> update{NOME_MODELO}({required String databaseId, required {NOME_MODELO}Model {NOME_MODELO_LOWER}});
+  Future<Result<dynamic>> delete{NOME_MODELO}({required String databaseId, required String {NOME_MODELO_LOWER}Id});
+}
+```
+
+### 🔹 ETAPA 4: REPOSITORY IMPLEMENTATION
+**Path**: `/lib/data/repositories/{nome_da_classe}/{nome_da_classe}_repository_impl.dart`
+
+Implementação usando Mock:
+- [ ] **Implementar interface**: Todos os 5 métodos
+- [ ] **Usar Mock**: Delegar para {NOME_MODELO}Mock
+- [ ] **Result Pattern**: Retornar Result<T> para todos os métodos
+- [ ] **Error Handling**: Tratar exceções adequadamente
+
+```dart
+class {NOME_MODELO}RepositoryImpl implements {NOME_MODELO}Repository {
+  {NOME_MODELO}RepositoryImpl();
+  
+  @override
+  Future<Result<{NOME_MODELO}Model>> create{NOME_MODELO}({required String databaseId, required {NOME_MODELO}Model {NOME_MODELO_LOWER}}) async {
+    return {NOME_MODELO}Mock.add{NOME_MODELO}({NOME_MODELO_LOWER});
+  }
+  
+  @override
+  Future<Result<dynamic>> delete{NOME_MODELO}({required String databaseId, required String {NOME_MODELO_LOWER}Id}) async {
+    return Result.ok({NOME_MODELO}Mock.delete{NOME_MODELO}({NOME_MODELO_LOWER}Id));
+  }
+  
+  @override
+  Future<Result<List<{NOME_MODELO}Model>>> getAll{PLURAL}({required String databaseId}) async {
+    return {NOME_MODELO}Mock.getMock{PLURAL}();
+  }
+  
+  @override
+  Future<Result<{NOME_MODELO}Model>> get{NOME_MODELO}By({required String databaseId, required String {NOME_MODELO_LOWER}Id}) async {
+    return {NOME_MODELO}Mock.get{NOME_MODELO}ById({NOME_MODELO_LOWER}Id);
+  }
+  
+  @override
+  Future<Result<{NOME_MODELO}Model>> update{NOME_MODELO}({required String databaseId, required {NOME_MODELO}Model {NOME_MODELO_LOWER}}) async {
+    return {NOME_MODELO}Mock.update{NOME_MODELO}({NOME_MODELO_LOWER});
+  }
+}
+```
+
+### 🔹 ETAPA 5: VIEWMODEL
+**Path**: `/lib/ui/{nome_da_tela}/viewmodel/{nome_da_tela}_viewmodel.dart`
+
+ViewModel com Command pattern:
+- [ ] **Constructor**: Injeção de dependência do Repository
+- [ ] **Lista privada**: `List<{NOME_MODELO}Model> _{LISTA_PRIVADA} = []`
+- [ ] **Getter público**: `List<{NOME_MODELO}Model> get {LISTA_PUBLICA} => _{LISTA_PRIVADA}`
+- [ ] **5 Commands**: getAll, getBy, create, update, delete
+- [ ] **Métodos privados**: Implementação com notifyListeners()
+
+```dart
+final class {NOME_TELA}ViewModel extends ChangeNotifier {
+  {NOME_TELA}ViewModel({required {NOME_MODELO}Repository {NOME_MODELO_LOWER}Repository}) : _{NOME_MODELO_LOWER}Repository = {NOME_MODELO_LOWER}Repository {
+    getAll{PLURAL} = Command0(_getAll{PLURAL});
+    get{NOME_MODELO}By = Command1(_get{NOME_MODELO}By);
+    create{NOME_MODELO} = Command1(_create{NOME_MODELO});
+    update{NOME_MODELO} = Command1(_update{NOME_MODELO});
+    delete{NOME_MODELO} = Command1(_delete{NOME_MODELO});
+  }
+  final {NOME_MODELO}Repository _{NOME_MODELO_LOWER}Repository;
+
+  final List<{NOME_MODELO}Model> _{LISTA_PRIVADA} = [];
+  List<{NOME_MODELO}Model> get {LISTA_PUBLICA} => _{LISTA_PRIVADA};
+  
+  late final Command0<List<{NOME_MODELO}Model>> getAll{PLURAL};
+  late final Command1<{NOME_MODELO}Model, String> get{NOME_MODELO}By;
+  late final Command1<{NOME_MODELO}Model, {NOME_MODELO}Model> create{NOME_MODELO};
+  late final Command1<{NOME_MODELO}Model, {NOME_MODELO}Model> update{NOME_MODELO};
+  late final Command1<dynamic, String> delete{NOME_MODELO};
+
+  // Implementar métodos privados com Result.map() e notifyListeners()
+}
+```
+
+### 🔹 ETAPA 6: UI SCREEN
+**Path**: `/lib/ui/{nome_da_tela}/widget/{nome_da_tela}_screen.dart`
+
+Tela completa com padrões obrigatórios:
+- [ ] **initState**: Listeners para update, delete, create + execute getAll
+- [ ] **dispose**: removeListener para todos os commands
+- [ ] **_onResult**: Feedback visual com SnackBar (sucesso/erro)
+- [ ] **ListenableBuilder**: Merge viewModel + getAllCommand
+- [ ] **Estados**: Loading (CupertinoActivityIndicator), Error, Empty, Success
+- [ ] **Layout Responsivo**: LayoutBuilder com breakpoints
+
+```dart
+class _${NOME_TELA}ScreenState extends State<{NOME_TELA}Screen> {
+  @override
+  void initState() {
+    super.initState();
+    widget.viewModel.update{NOME_MODELO}.addListener(() => _onResult(command: widget.viewModel.update{NOME_MODELO}, successMessage: '{MODELO} atualizado com sucesso!'));
+    widget.viewModel.delete{NOME_MODELO}.addListener(() => _onResult(command: widget.viewModel.delete{NOME_MODELO}, successMessage: '{MODELO} excluído com sucesso!'));
+    widget.viewModel.create{NOME_MODELO}.addListener(() => _onResult(command: widget.viewModel.create{NOME_MODELO}, successMessage: '{MODELO} criado com sucesso!'));
+    widget.viewModel.getAll{PLURAL}.execute();
+  }
+
+  @override
+  void dispose() {
+    widget.viewModel.update{NOME_MODELO}.removeListener(() => _onResult(command: widget.viewModel.update{NOME_MODELO}, successMessage: '{MODELO} atualizado com sucesso!'));
+    widget.viewModel.delete{NOME_MODELO}.removeListener(() => _onResult(command: widget.viewModel.delete{NOME_MODELO}, successMessage: '{MODELO} excluído com sucesso!'));
+    widget.viewModel.create{NOME_MODELO}.removeListener(() => _onResult(command: widget.viewModel.create{NOME_MODELO}, successMessage: '{MODELO} criado com sucesso!'));
+    super.dispose();
+  }
+
+  void _onResult({required Command command, required String successMessage}) {
+    if(command.error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro: \${command.errorMessage ?? 'Ocorreu um erro desconhecido.'}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else if (command.completed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('{TITULO_TELA}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => widget.viewModel.getAll{PLURAL}.execute(),
+          ),
+        ],
+      ),
+      body: ListenableBuilder(
+        listenable: Listenable.merge([
+          widget.viewModel,
+          widget.viewModel.getAll{PLURAL},
+        ]),
+        builder: (context, _) {
+          if (widget.viewModel.getAll{PLURAL}.running) {
+            return const Center(child: CupertinoActivityIndicator());
+          }
+
+          if (widget.viewModel.getAll{PLURAL}.error) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Erro ao carregar {PLURAL_LOWER}: \${widget.viewModel.getAll{PLURAL}.errorMessage}',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: widget.viewModel.{LISTA_PUBLICA}.isEmpty
+                    ? const Center(child: Text('Nenhum {MODELO_LOWER} encontrado'))
+                    : _buildResponsiveList(context),
+              ),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _create{NOME_MODELO},
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  // Implementar métodos CRUD e layout responsivo
+}
+```
+
+### 2. 🎨 Mapeamento de Estilos e Layout Responsivo
+- [ ] **LayoutBuilder**: Implementar breakpoints (mobile < 640px, tablet 640-1024px, desktop > 1024px)
+- [ ] **CustomTextTheme**: Mapear tipografia Tailwind para tema Flutter
+- [ ] **CustomColorTheme**: Converter variáveis CSS para tema de cores
+- [ ] **Responsividade**: GridView adaptativo baseado em largura da tela
 ### 3. 🧩 Componentes e Funcionalidades
 - [ ] **Modais React → Flutter**: Converter para `showDialog()` com `Dialog` ou `AlertDialog`
-- [ ] **Formulários**: Implementar com `Form` + `TextFormField` + validação
-- [ ] **Estados de Loading**: Adicionar `CircularProgressIndicator` e feedback visual
+- [ ] **Formulários**: Implementar com `Form` + `TextFormField` + validação usando padrão Command
+- [ ] **Estados de Loading**: CupertinoActivityIndicator quando Command.running == true
+- [ ] **Estados de Erro**: Feedback visual quando Command.error == true
 - [ ] **Navegação**: Implementar com `Navigator` e transições suaves
-- [ ] **Animações**: Manter micro-interações com `AnimatedContainer`, `FadeTransition`, etc.
+- [ ] **CRUD Operations**: Create, Update, Delete usando Commands da ViewModel
 
 ### 4. 📱 Layout Responsivo OBRIGATÓRIO
 Implementar breakpoints responsivos idênticos ao React:
@@ -69,138 +359,389 @@ Widget _buildResponsiveLayout(BuildContext context) {
 }
 ```
 
-### 5. 💾 Dados e Modelos
-- [ ] **Dados Mock**: Manter exatamente os mesmos dados do React
-- [ ] **Classes Tipadas**: Criar modelos com `copyWith`, `const constructors`
-- [ ] **Enums**: Implementar para status, tipos, estados (ex: `enum VitalStatus { normal, warning, critical }`)
-- [ ] **Extensões**: Adicionar métodos úteis aos enums (ex: `extension VitalStatusExtension on VitalStatus`)
-
-### 6. ⚡ Performance e Qualidade
-- [ ] **Widgets Const**: Usar `const` em todos os widgets estáticos possíveis
-- [ ] **Keys**: Adicionar `Key` em widgets de lista e animados
-- [ ] **Lazy Loading**: Usar `ListView.builder` para listas grandes
-- [ ] **Memory Management**: Dispose de controllers e listeners
-- [ ] **Acessibilidade**: Adicionar `Semantics` e labels apropriados
-
 ## 📤 ENTREGÁVEIS ESPERADOS
 
-### 📁 Estrutura de Arquivos
+### 📁 Estrutura de Arquivos OBRIGATÓRIA
 ```
-lib/ui/{nome_tela}/
+lib/
 ├── domain/models/
-│   └── {nome_tela}_model.dart         # Classes de dados e enums
-├── ui/{nome_tela}/widget/
-    ├── {nome_tela}.dart                # Widget principal
-    ├── {componente}_card.dart          # Cards específicos
-    ├── {componente}_detail.dart        # Modais de detalhes
-    └── {componente}_form.dart          # Formulários
-
+│   └── {nome_modelo}_model.dart           # 1. Domain Model
+├── utils/mocks/
+│   └── {nome_modelo}_mock.dart            # 2. Mock Data
+├── data/repositories/{nome_modelo}/
+│   ├── {nome_modelo}_repository.dart      # 3. Repository Interface
+│   └── {nome_modelo}_repository_impl.dart # 4. Repository Implementation
+└── ui/{nome_tela}/
+    ├── viewmodel/
+    │   └── {nome_tela}_viewmodel.dart      # 5. ViewModel
+    └── widget/
+        ├── {nome_tela}_screen.dart         # 6. Main Screen
+        ├── {componente}_dialog.dart        # Dialogs/Modals
+        └── {componente}_form.dart          # Forms
 ```
 
-### 📝 Código Esperado
-1. **Widget Principal**: StatefulWidget completo com todas as funcionalidades
-2. **Widgets Auxiliares**: Componentes reutilizáveis e bem organizados
-3. **Modelos de Dados**: Classes tipadas com validação e métodos auxiliares
-4. **Comentários**: Documentação clara explicando escolhas de implementação
-5. **Exemplo de Uso**: Demonstração de como integrar o componente
+### 📝 Código Esperado (6 ARQUIVOS OBRIGATÓRIOS)
+1. **Domain Model**: Classe final com fromJson, toJson, copyWith, toString
+2. **Mock Class**: Operações CRUD completas com dados realistas
+3. **Repository Interface**: 5 métodos abstratos com Result<T>
+4. **Repository Implementation**: Delegação para Mock com tratamento de erros
+5. **ViewModel**: Command pattern com gerenciamento de estado reativo
+6. **UI Screen**: StatefulWidget com listeners, responsividade e feedback visual
+
+### 🎯 PADRÕES ESPECÍFICOS OBRIGATÓRIOS
+
+#### Command Pattern na ViewModel:
+```dart
+// Command0 para métodos sem parâmetros
+late final Command0<List<TaskModel>> getAllTasks;
+
+// Command1 para métodos com 1 parâmetro
+late final Command1<TaskModel, String> getTaskBy;
+late final Command1<TaskModel, TaskModel> createTask;
+```
+
+#### Result Pattern em Repository:
+```dart
+Future<Result<List<TaskModel>>> getAllTasks({required String databaseId}) async {
+  return TaskMock.getMockTasks();
+}
+```
+
+#### ListenableBuilder na UI:
+```dart
+ListenableBuilder(
+  listenable: Listenable.merge([
+    widget.viewModel,
+    widget.viewModel.getAllTasks,
+  ]),
+  builder: (context, _) {
+    // Estados: loading, error, empty, success
+  },
+)
+```
 
 ## ✅ CRITÉRIOS DE VALIDAÇÃO
 
+### 🏗️ Arquitetura Completa
+- [ ] **Domain Model**: Classe com fromJson, toJson, copyWith, toString implementados
+- [ ] **Mock Data**: CRUD completo com 6-8 itens realistas e Future.delayed
+- [ ] **Repository**: Interface + Implementation usando Mock
+- [ ] **ViewModel**: Command pattern com 5 commands + notifyListeners
+- [ ] **UI Screen**: ListenableBuilder + Command listeners + responsividade
+
 ### 🎨 Fidelidade Visual
 - [ ] Layout idêntico ao React em todos os breakpoints
-- [ ] Cores exatamente equivalentes usando NewAppColorTheme
 - [ ] Tipografia consistente com CustomTextTheme
 - [ ] Espaçamentos e proporções mantidos
-- [ ] Animações e transições suaves
+- [ ] Estados visuais (loading, error, empty, success) implementados
 
 ### 🔧 Funcionalidade
-- [ ] Todas as interações implementadas (cliques, formulários, modais)
-- [ ] Estados gerenciados corretamente (loading, erro, sucesso)
-- [ ] Validação de formulários robusta
-- [ ] Navegação funcionando perfeitamente
-- [ ] Responsividade em mobile, tablet e desktop
+- [ ] **CRUD Completo**: Create, Read, Update, Delete funcionando
+- [ ] **Command Pattern**: Estados de loading, error, completed
+- [ ] **Feedback Visual**: SnackBars para sucesso/erro de operações
+- [ ] **Validação**: Formulários com validação robusta
+- [ ] **Responsividade**: Mobile, tablet e desktop
 
 ### 💎 Qualidade de Código
 - [ ] Sem erros de compilação ou warnings
-- [ ] Performance otimizada (60 FPS)
-- [ ] Código bem estruturado e legível
-- [ ] Padrões do projeto seguidos
-- [ ] Documentação adequada
+- [ ] Padrões arquiteturais seguidos rigorosamente
+- [ ] Dispose de listeners implementado corretamente
+- [ ] Performance otimizada com const widgets
+- [ ] Código bem estruturado e documentado
 
-### 🧪 Testes
-- [ ] Widget pode ser testado facilmente
-- [ ] Estados são verificáveis
-- [ ] Funcionalidades isoladas
-- [ ] Sem vazamentos de memória
+## 📊 EXEMPLO DE CONVERSÃO COMPLETA
 
-## 📊 EXEMPLO DE CONVERSÃO
+### 🔹 1. Domain Model
+```dart
+/// Modelo de domínio para uma tarefa médica
+final class MedicalTaskModel {
+  final String id;
+  final String title;
+  final String description;
+  final TaskPriority priority;
+  final bool isCompleted;
+  final DateTime createdAt;
+  final DateTime? completedAt;
 
-### React Original
-```tsx
-<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-  <Card className="medical-card">
-    <CardHeader>
-      <CardTitle className="text-lg font-semibold gradient-text">
-        Título
-      </CardTitle>
-    </CardHeader>
-  </Card>
-</div>
+  const MedicalTaskModel({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.priority,
+    required this.isCompleted,
+    required this.createdAt,
+    this.completedAt,
+  });
+
+  factory MedicalTaskModel.fromJson(dynamic json) {
+    return MedicalTaskModel(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      priority: TaskPriority.values.firstWhere(
+        (e) => e.name == json['priority'],
+        orElse: () => TaskPriority.normal,
+      ),
+      isCompleted: json['is_completed'] ?? false,
+      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toString()),
+      completedAt: json['completed_at'] != null 
+          ? DateTime.parse(json['completed_at']) 
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'priority': priority.name,
+      'is_completed': isCompleted,
+      'created_at': createdAt.toIso8601String(),
+      'completed_at': completedAt?.toIso8601String(),
+    };
+  }
+
+  MedicalTaskModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    TaskPriority? priority,
+    bool? isCompleted,
+    DateTime? createdAt,
+    DateTime? completedAt,
+  }) {
+    return MedicalTaskModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      priority: priority ?? this.priority,
+      isCompleted: isCompleted ?? this.isCompleted,
+      createdAt: createdAt ?? this.createdAt,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'MedicalTaskModel(id: $id, title: $title, priority: $priority, isCompleted: $isCompleted)';
+  }
+}
+
+enum TaskPriority { low, normal, high, critical }
 ```
 
-### Flutter Convertido
+### 🔹 2. ViewModel com Commands
 ```dart
-LayoutBuilder(
-  builder: (context, constraints) {
-    int crossAxisCount = 1;
-    if (constraints.maxWidth > 1200) crossAxisCount = 3;
-    else if (constraints.maxWidth > 768) crossAxisCount = 2;
+final class MedicalTaskViewModel extends ChangeNotifier {
+  MedicalTaskViewModel({required MedicalTaskRepository taskRepository}) 
+      : _taskRepository = taskRepository {
+    getAllTasks = Command0(_getAllTasks);
+    getTaskBy = Command1(_getTaskBy);
+    createTask = Command1(_createTask);
+    updateTask = Command1(_updateTask);
+    deleteTask = Command1(_deleteTask);
+  }
+  
+  final MedicalTaskRepository _taskRepository;
 
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemBuilder: (context, index) => Card(
-        color: context.customColorTheme.card,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(/* gradiente médico */),
-          ),
-          child: Column(
-            children: [
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [
-                    context.customColorTheme.primary,
-                    context.customColorTheme.primaryShade,
-                  ],
-                ).createShader(bounds),
-                child: Text(
-                  'Título',
-                  style: context.customTextTheme.textLgSemibold.copyWith(
-                    color: Colors.white,
-                  ),
-                ),
+  final List<MedicalTaskModel> _tasks = [];
+  List<MedicalTaskModel> get tasks => _tasks;
+  
+  late final Command0<List<MedicalTaskModel>> getAllTasks;
+  late final Command1<MedicalTaskModel, String> getTaskBy;
+  late final Command1<MedicalTaskModel, MedicalTaskModel> createTask;
+  late final Command1<MedicalTaskModel, MedicalTaskModel> updateTask;
+  late final Command1<dynamic, String> deleteTask;
+
+  Future<Result<List<MedicalTaskModel>>> _getAllTasks() async {
+    return await _taskRepository.getAllTasks(databaseId: 'default')
+        .map((tasks) {
+      _tasks
+        ..clear()
+        ..addAll(tasks);
+      notifyListeners();
+      return tasks;
+    });
+  }
+
+  Future<Result<MedicalTaskModel>> _createTask(MedicalTaskModel task) async {
+    return await _taskRepository.createTask(databaseId: 'default', task: task)
+        .map((createdTask) {
+      _tasks.add(createdTask);
+      notifyListeners();
+      return createdTask;
+    });
+  }
+
+  // ... outros métodos
+}
+```
+
+### 🔹 3. UI Screen com ListenableBuilder
+```dart
+class MedicalTaskScreen extends StatefulWidget {
+  final MedicalTaskViewModel viewModel;
+  const MedicalTaskScreen({super.key, required this.viewModel});
+
+  @override
+  State<MedicalTaskScreen> createState() => _MedicalTaskScreenState();
+}
+
+class _MedicalTaskScreenState extends State<MedicalTaskScreen> {
+  @override
+  void initState() {
+    super.initState();
+    widget.viewModel.updateTask.addListener(() => _onResult(
+      command: widget.viewModel.updateTask, 
+      successMessage: 'Tarefa médica atualizada com sucesso!'
+    ));
+    widget.viewModel.deleteTask.addListener(() => _onResult(
+      command: widget.viewModel.deleteTask, 
+      successMessage: 'Tarefa médica excluída com sucesso!'
+    ));
+    widget.viewModel.createTask.addListener(() => _onResult(
+      command: widget.viewModel.createTask, 
+      successMessage: 'Tarefa médica criada com sucesso!'
+    ));
+    widget.viewModel.getAllTasks.execute();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ListenableBuilder(
+        listenable: Listenable.merge([
+          widget.viewModel,
+          widget.viewModel.getAllTasks,
+        ]),
+        builder: (context, _) {
+          if (widget.viewModel.getAllTasks.running) {
+            return const Center(child: CupertinoActivityIndicator());
+          }
+
+          if (widget.viewModel.getAllTasks.error) {
+            return Center(
+              child: Text(
+                'Erro ao carregar tarefas: ${widget.viewModel.getAllTasks.errorMessage}',
+                style: const TextStyle(color: Colors.red),
               ),
-            ],
-          ),
-        ),
+            );
+          }
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              int crossAxisCount = 1;
+              if (width >= 1024) crossAxisCount = 3;
+              else if (width >= 640) crossAxisCount = 2;
+
+              return widget.viewModel.tasks.isEmpty
+                  ? const Center(child: Text('Nenhuma tarefa médica encontrada'))
+                  : GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: widget.viewModel.tasks.length,
+                      itemBuilder: (context, index) {
+                        final task = widget.viewModel.tasks[index];
+                        return _MedicalTaskCard(
+                          task: task,
+                          onEdit: () => _editTask(task),
+                          onDelete: () => _deleteTask(task.id),
+                          onToggleComplete: () => _toggleTaskCompletion(task),
+                        );
+                      },
+                    );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createNewTask,
+        child: const Icon(Icons.add),
       ),
     );
-  },
-)
+  }
+
+  void _onResult({required Command command, required String successMessage}) {
+    if (command.error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro: ${command.errorMessage ?? 'Erro desconhecido'}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else if (command.completed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  // ... métodos CRUD
+}
 ```
 
 ---
 
 ## 🚀 EXECUTAR CONVERSÃO
 
-Execute a conversão completa seguindo este template e o guia de conversão anexado. 
+### 📝 PROMPT FINAL PARA USO:
 
-**Objetivo**: Criar uma réplica Flutter perfeita do componente React, mantendo 100% da fidelidade visual e funcional, otimizada para performance e seguindo os padrões estabelecidos no projeto.
+**Copie e cole este template preenchendo as variáveis `{VARIAVEL}` com os valores específicos do seu projeto:**
+
+```
+Converta o componente React {NOME_COMPONENTE} para Flutter seguindo a arquitetura completa estabelecida no projeto.
+
+**INFORMAÇÕES OBRIGATÓRIAS:**
+- **Domain Model Path**: /lib/domain/models/{NOME_MODELO}_model.dart
+- **Tela Nome**: {NOME_TELA}
+- **Componente React**: lovable/src/pages/{NOME_PAGINA}.tsx
+
+**ARQUITETURA COMPLETA (6 ARQUIVOS):**
+1. Domain Model (/lib/domain/models/{NOME_MODELO}_model.dart)
+2. Mock Data (/lib/utils/mocks/{NOME_MODELO}_mock.dart)  
+3. Repository Interface (/lib/data/repositories/{NOME_MODELO}/{NOME_MODELO}_repository.dart)
+4. Repository Implementation (/lib/data/repositories/{NOME_MODELO}/{NOME_MODELO}_repository_impl.dart)
+5. ViewModel (/lib/ui/{NOME_TELA}/viewmodel/{NOME_TELA}_viewmodel.dart)
+6. UI Screen (/lib/ui/{NOME_TELA}/widget/{NOME_TELA}_screen.dart)
+
+**PADRÕES OBRIGATÓRIOS:**
+- Domain Model: fromJson, toJson, copyWith, toString
+- Mock: CRUD completo com Future.delayed(2s)
+- Repository: 5 métodos com Result<T>
+- ViewModel: Command pattern com notifyListeners
+- UI: ListenableBuilder + Command listeners + responsividade
+
+**FUNCIONALIDADES:**
+- Layout responsivo (mobile/tablet/desktop)
+- CRUD completo funcionando
+- Estados loading/error/empty/success
+- Feedback visual com SnackBars
+- Formulários com validação
+
+Implemente seguindo exatamente o template de conversão anexado.
+```
+
+### 🎯 VARIÁVEIS PARA PREENCHER:
+- `{NOME_COMPONENTE}`: Nome do componente React (ex: "MedicalDashboard")  
+- `{NOME_MODELO}`: Nome da classe modelo (ex: "MedicalTask")
+- `{NOME_TELA}`: Nome da tela Flutter (ex: "medical_dashboard")
+- `{NOME_PAGINA}`: Nome do arquivo React (ex: "medical-dashboard")
+
+### ✅ CHECKLIST FINAL:
+- [ ] Path do Domain Model informado
+- [ ] Componente React anexado
+- [ ] Template de conversão anexado
+- [ ] Arquivos de referência anexados (AppException, Result, Command)
+- [ ] Variáveis preenchidas no prompt
 
 ---
 
-*Use este template preenchendo os campos `{NOME_COMPONENTE}`, `{nome_arquivo}`, `{nome_tela}` com os valores específicos da conversão.*
+**Objetivo**: Criar uma arquitetura Flutter completa e funcional que replique perfeitamente o componente React, seguindo todos os padrões estabelecidos no projeto e garantindo máxima qualidade de código.
