@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mastering_tests/data/repositories/task_repository.dart';
+import 'package:mastering_tests/data/repositories/task/task_repository.dart';
 import 'package:mastering_tests/domain/models/task.dart';
 import 'package:mastering_tests/exceptions/app_exception.dart';
 import 'package:mastering_tests/ui/dashboard/viewmodel/task_viewmodel.dart';

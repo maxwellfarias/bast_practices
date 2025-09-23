@@ -1,6 +1,6 @@
 import 'package:mastering_tests/domain/models/task_model.dart';
 
-import '../../utils/result.dart';
+import '../../../utils/result.dart';
 
 
 abstract interface class TaskRepository {

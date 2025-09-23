@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:mastering_tests/data/repositories/task_repository_impl.dart';
+import 'package:mastering_tests/data/repositories/task/task_repository_impl.dart';
 import 'package:mastering_tests/data/services/api/api_serivce.dart';
 import 'package:mastering_tests/domain/models/task.dart';
 import 'package:mastering_tests/utils/result.dart';
