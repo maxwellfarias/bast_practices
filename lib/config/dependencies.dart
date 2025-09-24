@@ -1,6 +1,8 @@
 
 
 import 'package:dio/dio.dart';
+import 'package:mastering_tests/data/repositories/curso/curso_repository.dart';
+import 'package:mastering_tests/data/repositories/curso/curso_repository_impl.dart';
 import 'package:mastering_tests/data/repositories/task/task_repository.dart';
 import 'package:mastering_tests/data/repositories/task/task_repository_impl.dart';
 import 'package:mastering_tests/data/repositories/turma/turma_repository.dart';
@@ -18,6 +20,7 @@ List<SingleChildWidget> get providers {
 
     //Repositories
     Provider(create: (context) => TurmaRepositoryImpl() as TurmaRepository),
+    Provider(create: (context) => CursoRepositoryImpl() as CursoRepository),
     Provider(create: (context) => TaskRepositoryImpl(apiService: context.read<ApiClient>()) as TaskRepository),
     Provider(create: (context) => TaskViewModel(taskRepository: context.read<TaskRepository>())),
   ];

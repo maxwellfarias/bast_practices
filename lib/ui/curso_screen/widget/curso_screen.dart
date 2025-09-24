@@ -1,679 +1,549 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:mastering_tests/domain/models/curso_model.dart';
 import 'package:mastering_tests/ui/curso_screen/viewmodel/curso_viewmodel.dart';
+import 'package:mastering_tests/ui/curso_screen/widget/curso_form_dialog.dart';
+import 'package:mastering_tests/ui/curso_screen/widget/curso_view_dialog.dart';
 import 'package:mastering_tests/ui/core/extensions/build_context_extension.dart';
+import 'package:mastering_tests/utils/command.dart';
 
-/// Tela principal de gerenciamento de cursos acadêmicos
-/// Converte funcionalidade do React CoursesGrid para Flutter
-class CursoScreen extends StatefulWidget {
-  const CursoScreen({super.key});
+final class CursoScreen extends StatefulWidget {
+  final CursoViewModel viewModel;
+
+  const CursoScreen({super.key, required this.viewModel});
 
   @override
   State<CursoScreen> createState() => _CursoScreenState();
 }
 
 class _CursoScreenState extends State<CursoScreen> {
-  late CursoViewModel _viewModel;
-  final TextEditingController _searchController = TextEditingController();
-  String? _selectedModalidade;
-  String? _selectedGrau;
+  String _searchTerm = "";
 
   @override
   void initState() {
     super.initState();
-    _viewModel = CursoViewModel();
-    _searchController.addListener(_onSearchChanged);
+    // LISTENERS OBRIGATÓRIOS PARA 3 COMMANDS
+    widget.viewModel.updateCursoCommand.addListener(() => _onResult(command: widget.viewModel.updateCursoCommand, successMessage: 'Curso atualizado com sucesso!'));
+    widget.viewModel.deleteCursoCommand.addListener(() => _onResult(command: widget.viewModel.deleteCursoCommand, successMessage: 'Curso excluído com sucesso!'));
+    widget.viewModel.createCursoCommand.addListener(() => _onResult(command: widget.viewModel.createCursoCommand, successMessage: 'Curso criado com sucesso!'));
+    // EXECUTAR GET ALL OBRIGATÓRIO
+    widget.viewModel.getAllCursos();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _viewModel.dispose();
+    // DISPOSE DE TODOS OS LISTENERS OBRIGATÓRIO
+    widget.viewModel.updateCursoCommand.removeListener(() => _onResult(command: widget.viewModel.updateCursoCommand, successMessage: 'Curso atualizado com sucesso!'));
+    widget.viewModel.deleteCursoCommand.removeListener(() => _onResult(command: widget.viewModel.deleteCursoCommand, successMessage: 'Curso excluído com sucesso!'));
+    widget.viewModel.createCursoCommand.removeListener(() => _onResult(command: widget.viewModel.createCursoCommand, successMessage: 'Curso criado com sucesso!'));
+    
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    _viewModel.setBusca(_searchController.text);
+  /// MÉTODO _onResult OBRIGATÓRIO PARA FEEDBACK VISUAL
+  void _onResult({required Command command, required String successMessage}) {
+    if(command.error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro: ${command.errorMessage ?? 'Ocorreu um erro desconhecido.'}'),
+          backgroundColor: context.customColorTheme.destructive,
+        ),
+      );
+    } else if (command.completed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: context.customColorTheme.success,
+        ),
+      );
+    }
   }
 
-  void _showCursoForm([Cursos? curso]) {
+  List<Cursos> get _filteredCursos {
+    if (_searchTerm.isEmpty) return widget.viewModel.cursos;
+    return widget.viewModel.cursos.where((curso) =>
+      curso.nomeCurso.toLowerCase().contains(_searchTerm.toLowerCase()) ||
+      curso.tituloConferido.toLowerCase().contains(_searchTerm.toLowerCase()) ||
+      curso.modalidade.toLowerCase().contains(_searchTerm.toLowerCase()) ||
+      curso.grauConferido.toLowerCase().contains(_searchTerm.toLowerCase())
+    ).toList();
+  }
+
+  String _getModalidadeBadgeColor(String modalidade) {
+    switch (modalidade) {
+      case "Presencial":
+        return "primary";
+      case "EaD":
+        return "secondary";
+      case "Híbrido":
+        return "accent";
+      default:
+        return "muted";
+    }
+  }
+
+  void _openCreateDialog() {
     showDialog(
       context: context,
       builder: (context) => CursoFormDialog(
-        viewModel: _viewModel,
-        curso: curso,
+        title: 'Criar Novo Curso',
+        description: 'Preencha as informações do novo curso',
+        onSubmit: (curso) => widget.viewModel.createCurso(curso),
+        isEdit: false,
       ),
     );
   }
 
-  void _confirmDelete(int cursoId, String nomeCurso) {
+  void _openEditDialog(Cursos curso) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Confirmar Exclusão',
-          style: context.customTextTheme.textLgSemibold.copyWith(
-            color: context.customColorTheme.foreground,
-          ),
-        ),
-        content: Text(
-          'Tem certeza que deseja excluir o curso "$nomeCurso"? Esta ação não pode ser desfeita.',
-          style: context.customTextTheme.textBase.copyWith(
-            color: context.customColorTheme.mutedForeground,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancelar',
-              style: context.customTextTheme.textSmMedium.copyWith(
-                color: context.customColorTheme.mutedForeground,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await _viewModel.deleteCurso(cursoId);
-              if (mounted && _viewModel.deleteCursoCommand.completed) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Curso "$nomeCurso" excluído com sucesso!'),
-                    backgroundColor: context.customColorTheme.success,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: context.customColorTheme.destructive,
-              foregroundColor: context.customColorTheme.destructiveForeground,
-            ),
-            child: Text(
-              'Excluir',
-              style: context.customTextTheme.textSmMedium,
-            ),
-          ),
-        ],
+      builder: (context) => CursoFormDialog(
+        title: 'Editar Curso',
+        description: 'Atualize as informações do curso',
+        initialCurso: curso,
+        onSubmit: (updatedCurso) => widget.viewModel.updateCurso(updatedCurso),
+        isEdit: true,
       ),
     );
+  }
+
+  void _openViewDialog(Cursos curso) {
+    showDialog(
+      context: context,
+      builder: (context) => CursoViewDialog(
+        curso: curso,
+        onEdit: () => _openEditDialog(curso),
+      ),
+    );
+  }
+
+  void _handleDeleteCurso(int cursoID) {
+    widget.viewModel.deleteCurso(cursoID);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _viewModel,
-      child: Scaffold(
-        backgroundColor: context.customColorTheme.background,
-        appBar: AppBar(
-          title: Text(
-            'Gerenciamento de Cursos',
-            style: context.customTextTheme.textXlSemibold.copyWith(
-              color: context.customColorTheme.foreground,
-            ),
-          ),
-          backgroundColor: context.customColorTheme.card,
-          elevation: 0,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(
-              height: 1,
-              color: context.customColorTheme.border,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Gestão de Cursos',
+          style: context.customTextTheme.textXlSemibold.copyWith(
+            color: context.customColorTheme.foreground,
           ),
         ),
-        body: Consumer<CursoViewModel>(
-          builder: (context, viewModel, child) {
-            return Column(
+        backgroundColor: context.customColorTheme.background,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.refresh,
+              color: context.customColorTheme.primary,
+            ),
+            onPressed: () => widget.viewModel.getAllCursos(),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Header with search and create button
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: context.customColorTheme.card,
+            child: Column(
               children: [
-                // Header com controles
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: context.customColorTheme.card,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: context.customColorTheme.border,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Barra de busca e botão adicionar
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                hintText: 'Buscar cursos...',
-                                hintStyle: context.customTextTheme.textBase.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                prefixIcon: Icon(
-                                  Icons.search,
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: context.customColorTheme.border,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: context.customColorTheme.border,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: context.customColorTheme.primary,
-                                    width: 2,
-                                  ),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                              style: context.customTextTheme.textBase.copyWith(
-                                color: context.customColorTheme.foreground,
-                              ),
-                            ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: context.customColorTheme.input,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: context.customColorTheme.border,
+                            width: 1,
                           ),
-                          const SizedBox(width: 12),
-                          ElevatedButton.icon(
-                            onPressed: () => _showCursoForm(),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: Text(
-                              'Novo Curso',
-                              style: context.customTextTheme.textSmMedium,
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: context.customColorTheme.primary,
-                              foregroundColor: context.customColorTheme.primaryForeground,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
+                        ),
+                        child: TextField(
+                          onChanged: (value) => setState(() => _searchTerm = value),
+                          style: context.customTextTheme.textBase.copyWith(
+                            color: context.customColorTheme.foreground,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Filtros
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedModalidade,
-                              decoration: InputDecoration(
-                                labelText: 'Modalidade',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: context.customColorTheme.border,
-                                  ),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                              items: [
-                                DropdownMenuItem<String>(
-                                  value: null,
-                                  child: Text(
-                                    'Todas',
-                                    style: context.customTextTheme.textBase.copyWith(
-                                      color: context.customColorTheme.mutedForeground,
-                                    ),
-                                  ),
-                                ),
-                                ...['Presencial', 'EaD', 'Híbrido'].map(
-                                  (modalidade) => DropdownMenuItem<String>(
-                                    value: modalidade,
-                                    child: Text(
-                                      modalidade,
-                                      style: context.customTextTheme.textBase.copyWith(
-                                        color: context.customColorTheme.foreground,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                setState(() => _selectedModalidade = value);
-                                viewModel.setFiltroModalidade(value);
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedGrau,
-                              decoration: InputDecoration(
-                                labelText: 'Grau',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: context.customColorTheme.border,
-                                  ),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                              items: [
-                                DropdownMenuItem<String>(
-                                  value: null,
-                                  child: Text(
-                                    'Todos',
-                                    style: context.customTextTheme.textBase.copyWith(
-                                      color: context.customColorTheme.mutedForeground,
-                                    ),
-                                  ),
-                                ),
-                                ...['Bacharel', 'Licenciatura', 'Tecnólogo'].map(
-                                  (grau) => DropdownMenuItem<String>(
-                                    value: grau,
-                                    child: Text(
-                                      grau,
-                                      style: context.customTextTheme.textBase.copyWith(
-                                        color: context.customColorTheme.foreground,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                setState(() => _selectedGrau = value);
-                                viewModel.setFiltroGrau(value);
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedModalidade = null;
-                                _selectedGrau = null;
-                              });
-                              viewModel.clearFiltros();
-                              _searchController.clear();
-                            },
-                            icon: Icon(
-                              Icons.clear_all,
+                          decoration: InputDecoration(
+                            hintText: 'Buscar cursos...',
+                            hintStyle: context.customTextTheme.textBase.copyWith(
                               color: context.customColorTheme.mutedForeground,
                             ),
-                            tooltip: 'Limpar filtros',
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: context.customColorTheme.mutedForeground,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton.icon(
+                      onPressed: _openCreateDialog,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Novo Curso'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: context.customColorTheme.primary,
+                        foregroundColor: context.customColorTheme.primaryForeground,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          // Content area
+          Expanded(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([
+                widget.viewModel,
+                widget.viewModel.getAllCursosCommand,
+              ]),
+              builder: (context, _) {
+                /// ESTADO LOADING OBRIGATÓRIO
+                if (widget.viewModel.getAllCursosCommand.running) {
+                  return Container(
+                    color: context.customColorTheme.background,
+                    child: const Center(
+                      child: CupertinoActivityIndicator(radius: 16),
+                    ),
+                  );
+                }
+
+                /// ESTADO ERROR OBRIGATÓRIO
+                if (widget.viewModel.getAllCursosCommand.error) {
+                  return Container(
+                    color: context.customColorTheme.background,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: context.customColorTheme.destructive,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Erro ao carregar cursos',
+                              style: context.customTextTheme.textLgSemibold.copyWith(
+                                color: context.customColorTheme.destructive,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              widget.viewModel.getAllCursosCommand.errorMessage ?? 'Ocorreu um erro desconhecido',
+                              style: context.customTextTheme.textBase.copyWith(
+                                color: context.customColorTheme.mutedForeground,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => widget.viewModel.getAllCursos(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: context.customColorTheme.primary,
+                                foregroundColor: context.customColorTheme.primaryForeground,
+                              ),
+                              child: const Text('Tentar novamente'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                /// ESTADO EMPTY OBRIGATÓRIO
+                if (_filteredCursos.isEmpty) {
+                  return Container(
+                    color: context.customColorTheme.background,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.school_outlined,
+                            size: 64,
+                            color: context.customColorTheme.mutedForeground,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            widget.viewModel.cursos.isEmpty ? 'Nenhum curso encontrado' : 'Nenhum curso corresponde à busca',
+                            style: context.customTextTheme.textLgMedium.copyWith(
+                              color: context.customColorTheme.mutedForeground,
+                            ),
+                          ),
+                          if (widget.viewModel.cursos.isEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Comece criando seu primeiro curso',
+                              style: context.customTextTheme.textBase.copyWith(
+                                color: context.customColorTheme.mutedForeground,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _openCreateDialog,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Criar Primeiro Curso'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: context.customColorTheme.primary,
+                                foregroundColor: context.customColorTheme.primaryForeground,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                // Lista de cursos
-                Expanded(
-                  child: viewModel.loadCursosCommand.running
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                color: context.customColorTheme.primary,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Carregando cursos...',
-                                style: context.customTextTheme.textBase.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                              ),
-                            ],
+                    ),
+                  );
+                }
+
+                /// ESTADO SUCCESS - LISTA DE DADOS
+                return Container(
+                  color: context.customColorTheme.background,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredCursos.length,
+                    itemBuilder: (context, index) {
+                      final curso = _filteredCursos[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        color: context.customColorTheme.card,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: context.customColorTheme.border,
+                            width: 1,
                           ),
-                        )
-                      : viewModel.loadCursosCommand.error
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header with title and badges
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Icon(
-                                    Icons.error_outline,
-                                    size: 48,
-                                    color: context.customColorTheme.destructive,
+                                    Icons.school,
+                                    color: context.customColorTheme.primary,
+                                    size: 20,
                                   ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Erro ao carregar cursos',
-                                    style: context.customTextTheme.textLgSemibold.copyWith(
-                                      color: context.customColorTheme.destructive,
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          curso.nomeCurso,
+                                          style: context.customTextTheme.textLgSemibold.copyWith(
+                                            color: context.customColorTheme.cardForeground,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          curso.tituloConferido,
+                                          style: context.customTextTheme.textSm.copyWith(
+                                            color: context.customColorTheme.mutedForeground,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    viewModel.loadCursosCommand.errorMessage ?? 'Erro desconhecido',
-                                    style: context.customTextTheme.textBase.copyWith(
-                                      color: context.customColorTheme.mutedForeground,
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: _getModalidadeBadgeColor(curso.modalidade) == "primary" 
+                                              ? context.customColorTheme.primary 
+                                              : _getModalidadeBadgeColor(curso.modalidade) == "secondary" 
+                                                  ? context.customColorTheme.secondary 
+                                                  : context.customColorTheme.accent,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          curso.modalidade,
+                                          style: context.customTextTheme.textXs.copyWith(
+                                            color: _getModalidadeBadgeColor(curso.modalidade) == "primary" 
+                                                ? context.customColorTheme.primaryForeground 
+                                                : _getModalidadeBadgeColor(curso.modalidade) == "secondary" 
+                                                    ? context.customColorTheme.secondaryForeground 
+                                                    : context.customColorTheme.accentForeground,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      if (curso.codigoCursoEMEC != null) ...[
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: context.customColorTheme.muted,
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(
+                                              color: context.customColorTheme.border,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'e-MEC ${curso.codigoCursoEMEC}',
+                                            style: context.customTextTheme.textXs.copyWith(
+                                              color: context.customColorTheme.mutedForeground,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // Course details
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: context.customColorTheme.secondary,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        curso.grauConferido,
+                                        style: context.customTextTheme.textXs.copyWith(
+                                          color: context.customColorTheme.secondaryForeground,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
-                                  ElevatedButton.icon(
-                                    onPressed: () => viewModel.loadCursos(),
-                                    icon: const Icon(Icons.refresh, size: 18),
-                                    label: const Text('Tentar novamente'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: context.customColorTheme.primary,
-                                      foregroundColor: context.customColorTheme.primaryForeground,
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 16,
+                                    color: context.customColorTheme.mutedForeground,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      '${curso.nomeMunicipio}, ${curso.uf}',
+                                      style: context.customTextTheme.textSm.copyWith(
+                                        color: context.customColorTheme.mutedForeground,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            )
-                          : viewModel.cursosFiltrados.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.school_outlined,
-                                        size: 64,
-                                        color: context.customColorTheme.mutedForeground,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        viewModel.termoBusca.isNotEmpty || 
-                                        viewModel.filtroModalidade != null ||
-                                        viewModel.filtroGrau != null
-                                            ? 'Nenhum curso encontrado'
-                                            : 'Nenhum curso cadastrado',
-                                        style: context.customTextTheme.textLgSemibold.copyWith(
-                                          color: context.customColorTheme.mutedForeground,
+                              
+                              const SizedBox(height: 8),
+                              
+                              // Authorization and Recognition info
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Autorização: ${curso.autorizacaoNumero}',
+                                          style: context.customTextTheme.textXs.copyWith(
+                                            color: context.customColorTheme.mutedForeground,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        viewModel.termoBusca.isNotEmpty || 
-                                        viewModel.filtroModalidade != null ||
-                                        viewModel.filtroGrau != null
-                                            ? 'Tente ajustar os filtros de busca'
-                                            : 'Clique em "Novo Curso" para começar',
-                                        style: context.customTextTheme.textBase.copyWith(
-                                          color: context.customColorTheme.mutedForeground,
+                                        Text(
+                                          'Reconhecimento: ${curso.reconhecimentoNumero}',
+                                          style: context.customTextTheme.textXs.copyWith(
+                                            color: context.customColorTheme.mutedForeground,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                )
-                              : ListView.builder(
-                                  padding: const EdgeInsets.all(16),
-                                  itemCount: viewModel.cursosFiltrados.length,
-                                  itemBuilder: (context, index) {
-                                    final curso = viewModel.cursosFiltrados[index];
-                                    return CursoCard(
-                                      curso: curso,
-                                      onEdit: () => _showCursoForm(curso),
-                                      onDelete: () => _confirmDelete(curso.cursoID, curso.nomeCurso),
-                                    );
-                                  },
-                                ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-/// Card individual de exibição de curso
-class CursoCard extends StatelessWidget {
-  final Cursos curso;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const CursoCard({
-    super.key,
-    required this.curso,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: context.customColorTheme.card,
-        border: Border.all(
-          color: context.customColorTheme.border,
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: context.customColorTheme.shadowCard,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cabeçalho com nome e ações
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        curso.nomeCurso,
-                        style: context.customTextTheme.textLgSemibold.copyWith(
-                          color: context.customColorTheme.foreground,
-                        ),
-                      ),
-                      if (curso.codigoCursoEMEC != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Código MEC: ${curso.codigoCursoEMEC}',
-                          style: context.customTextTheme.textSmMedium.copyWith(
-                            color: context.customColorTheme.primary,
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // Action buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _openViewDialog(curso),
+                                      icon: const Icon(Icons.visibility, size: 16),
+                                      label: const Text('Ver Detalhes'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: context.customColorTheme.primary,
+                                        side: BorderSide(color: context.customColorTheme.border),
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => _openEditDialog(curso),
+                                      icon: const Icon(Icons.edit, size: 16),
+                                      label: const Text('Editar'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: context.customColorTheme.primary,
+                                        foregroundColor: context.customColorTheme.primaryForeground,
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton(
+                                    onPressed: () => _showDeleteConfirmation(curso),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: context.customColorTheme.destructive,
+                                      side: BorderSide(color: context.customColorTheme.destructive),
+                                      padding: const EdgeInsets.all(8),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      minimumSize: const Size(40, 32),
+                                    ),
+                                    child: const Icon(Icons.delete, size: 16),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ],
+                      );
+                    },
                   ),
-                ),
-                PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: context.customColorTheme.mutedForeground,
-                  ),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.edit_outlined,
-                            size: 18,
-                            color: context.customColorTheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Editar',
-                            style: context.customTextTheme.textBase.copyWith(
-                              color: context.customColorTheme.foreground,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            size: 18,
-                            color: context.customColorTheme.destructive,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Excluir',
-                            style: context.customTextTheme.textBase.copyWith(
-                              color: context.customColorTheme.destructive,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'edit':
-                        onEdit();
-                        break;
-                      case 'delete':
-                        onDelete();
-                        break;
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Informações básicas
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                _buildInfoChip(
-                  context,
-                  Icons.school_outlined,
-                  curso.modalidade,
-                  context.customColorTheme.primary,
-                ),
-                _buildInfoChip(
-                  context,
-                  Icons.workspace_premium_outlined,
-                  curso.grauConferido,
-                  context.customColorTheme.success,
-                ),
-                _buildInfoChip(
-                  context,
-                  Icons.location_on_outlined,
-                  '${curso.nomeMunicipio}/${curso.uf}',
-                  context.customColorTheme.accent,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Título conferido
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: context.customColorTheme.muted,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: context.customColorTheme.border,
-                  width: 1,
-                ),
-              ),
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Título Conferido:',
-                    style: context.customTextTheme.textSmMedium.copyWith(
-                      color: context.customColorTheme.mutedForeground,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    curso.tituloConferido,
-                    style: context.customTextTheme.textBase.copyWith(
-                      color: context.customColorTheme.foreground,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Informações de autorização/reconhecimento (se disponíveis)
-            if (curso.autorizacaoTipo.isNotEmpty || curso.reconhecimentoTipo.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (curso.autorizacaoTipo.isNotEmpty)
-                    Expanded(
-                      child: _buildStatusContainer(
-                        context,
-                        'Autorização',
-                        '${curso.autorizacaoTipo} ${curso.autorizacaoNumero}',
-                        curso.autorizacaoData,
-                        context.customColorTheme.warning,
-                      ),
-                    ),
-                  if (curso.autorizacaoTipo.isNotEmpty && curso.reconhecimentoTipo.isNotEmpty)
-                    const SizedBox(width: 12),
-                  if (curso.reconhecimentoTipo.isNotEmpty)
-                    Expanded(
-                      child: _buildStatusContainer(
-                        context,
-                        'Reconhecimento',
-                        '${curso.reconhecimentoTipo} ${curso.reconhecimentoNumero}',
-                        curso.reconhecimentoData,
-                        context.customColorTheme.success,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoChip(BuildContext context, IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: context.customTextTheme.textSmMedium.copyWith(
-              color: color,
+                );
+              },
             ),
           ),
         ],
@@ -681,488 +551,48 @@ class CursoCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusContainer(
-    BuildContext context,
-    String title,
-    String subtitle,
-    DateTime? data,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: context.customTextTheme.textXsMedium.copyWith(
-              color: color,
+  void _showDeleteConfirmation(Cursos curso) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: context.customColorTheme.card,
+          title: Text(
+            'Excluir Curso',
+            style: context.customTextTheme.textLgSemibold.copyWith(
+              color: context.customColorTheme.cardForeground,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: context.customTextTheme.textSm.copyWith(
-              color: context.customColorTheme.foreground,
+          content: Text(
+            'Tem certeza que deseja excluir o curso "${curso.nomeCurso}"? Esta ação não pode ser desfeita.',
+            style: context.customTextTheme.textBase.copyWith(
+              color: context.customColorTheme.mutedForeground,
             ),
           ),
-          if (data != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              '${data.day.toString().padLeft(2, '0')}/${data.month.toString().padLeft(2, '0')}/${data.year}',
-              style: context.customTextTheme.textXs.copyWith(
-                color: context.customColorTheme.mutedForeground,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancelar',
+                style: context.customTextTheme.textBase.copyWith(
+                  color: context.customColorTheme.mutedForeground,
+                ),
               ),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Dialog para criação/edição de curso
-class CursoFormDialog extends StatefulWidget {
-  final CursoViewModel viewModel;
-  final Cursos? curso;
-
-  const CursoFormDialog({
-    super.key,
-    required this.viewModel,
-    this.curso,
-  });
-
-  @override
-  State<CursoFormDialog> createState() => _CursoFormDialogState();
-}
-
-class _CursoFormDialogState extends State<CursoFormDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nomeController;
-  late final TextEditingController _codigoMecController;
-  late final TextEditingController _tituloConferidoController;
-  late final TextEditingController _logradouroController;
-  late final TextEditingController _bairroController;
-  late final TextEditingController _municipioController;
-  late final TextEditingController _cepController;
-
-  String _modalidade = 'Presencial';
-  String _grauConferido = 'Bacharel';
-  String _uf = 'SP';
-
-  bool get _isEditing => widget.curso != null;
-
-  @override
-  void initState() {
-    super.initState();
-    _nomeController = TextEditingController(text: widget.curso?.nomeCurso ?? '');
-    _codigoMecController = TextEditingController(
-      text: widget.curso?.codigoCursoEMEC?.toString() ?? '',
-    );
-    _tituloConferidoController = TextEditingController(
-      text: widget.curso?.tituloConferido ?? '',
-    );
-    _logradouroController = TextEditingController(text: widget.curso?.logradouro ?? '');
-    _bairroController = TextEditingController(text: widget.curso?.bairro ?? '');
-    _municipioController = TextEditingController(text: widget.curso?.nomeMunicipio ?? '');
-    _cepController = TextEditingController(text: widget.curso?.cep ?? '');
-
-    if (_isEditing) {
-      _modalidade = widget.curso!.modalidade;
-      _grauConferido = widget.curso!.grauConferido;
-      _uf = widget.curso!.uf;
-    }
-  }
-
-  @override
-  void dispose() {
-    _nomeController.dispose();
-    _codigoMecController.dispose();
-    _tituloConferidoController.dispose();
-    _logradouroController.dispose();
-    _bairroController.dispose();
-    _municipioController.dispose();
-    _cepController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final curso = Cursos(
-      cursoID: widget.curso?.cursoID ?? 0,
-      nomeCurso: _nomeController.text.trim(),
-      codigoCursoEMEC: _codigoMecController.text.isNotEmpty 
-          ? int.tryParse(_codigoMecController.text) 
-          : null,
-      modalidade: _modalidade,
-      tituloConferido: _tituloConferidoController.text.trim(),
-      grauConferido: _grauConferido,
-      logradouro: _logradouroController.text.trim(),
-      bairro: _bairroController.text.trim(),
-      codigoMunicipio: widget.curso?.codigoMunicipio ?? 3550308, // São Paulo por padrão
-      nomeMunicipio: _municipioController.text.trim(),
-      uf: _uf,
-      cep: _cepController.text.trim(),
-      autorizacaoTipo: 'Portaria MEC',
-      autorizacaoNumero: '${DateTime.now().year}/${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}',
-      autorizacaoData: DateTime.now(),
-      reconhecimentoTipo: 'Portaria MEC',
-      reconhecimentoNumero: '${DateTime.now().year + 3}/${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}',
-      reconhecimentoData: DateTime.now().add(const Duration(days: 1095)),
-    );
-
-    if (_isEditing) {
-      await widget.viewModel.updateCurso(curso);
-    } else {
-      await widget.viewModel.addCurso(curso);
-    }
-
-    if (mounted) {
-      Navigator.of(context).pop();
-      final command = _isEditing 
-          ? widget.viewModel.updateCursoCommand 
-          : widget.viewModel.addCursoCommand;
-      
-      if (command.completed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEditing 
-                  ? 'Curso atualizado com sucesso!' 
-                  : 'Curso criado com sucesso!',
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _handleDeleteCurso(curso.cursoID);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.customColorTheme.destructive,
+                foregroundColor: context.customColorTheme.destructiveForeground,
+              ),
+              child: const Text('Excluir'),
             ),
-            backgroundColor: context.customColorTheme.success,
-          ),
+          ],
         );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 700),
-        decoration: BoxDecoration(
-          color: context.customColorTheme.card,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: context.customColorTheme.border,
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _isEditing ? 'Editar Curso' : 'Novo Curso',
-                      style: context.customTextTheme.textLgSemibold.copyWith(
-                        color: context.customColorTheme.foreground,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(
-                      Icons.close,
-                      color: context.customColorTheme.mutedForeground,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Form
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextFormField(
-                        controller: _nomeController,
-                        decoration: InputDecoration(
-                          labelText: 'Nome do Curso *',
-                          labelStyle: context.customTextTheme.textSm.copyWith(
-                            color: context.customColorTheme.mutedForeground,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: context.customColorTheme.input,
-                        ),
-                        validator: (value) => 
-                            value?.trim().isEmpty ?? true ? 'Campo obrigatório' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _codigoMecController,
-                        decoration: InputDecoration(
-                          labelText: 'Código MEC',
-                          labelStyle: context.customTextTheme.textSm.copyWith(
-                            color: context.customColorTheme.mutedForeground,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: context.customColorTheme.input,
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _modalidade,
-                              decoration: InputDecoration(
-                                labelText: 'Modalidade *',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                              items: ['Presencial', 'EaD', 'Híbrido'].map(
-                                (modalidade) => DropdownMenuItem<String>(
-                                  value: modalidade,
-                                  child: Text(modalidade),
-                                ),
-                              ).toList(),
-                              onChanged: (value) => setState(() => _modalidade = value!),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _grauConferido,
-                              decoration: InputDecoration(
-                                labelText: 'Grau *',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                              items: ['Bacharel', 'Licenciatura', 'Tecnólogo'].map(
-                                (grau) => DropdownMenuItem<String>(
-                                  value: grau,
-                                  child: Text(grau),
-                                ),
-                              ).toList(),
-                              onChanged: (value) => setState(() => _grauConferido = value!),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _tituloConferidoController,
-                        decoration: InputDecoration(
-                          labelText: 'Título Conferido *',
-                          labelStyle: context.customTextTheme.textSm.copyWith(
-                            color: context.customColorTheme.mutedForeground,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: context.customColorTheme.input,
-                        ),
-                        validator: (value) => 
-                            value?.trim().isEmpty ?? true ? 'Campo obrigatório' : null,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Endereço',
-                        style: context.customTextTheme.textBaseSemibold.copyWith(
-                          color: context.customColorTheme.foreground,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _logradouroController,
-                        decoration: InputDecoration(
-                          labelText: 'Logradouro',
-                          labelStyle: context.customTextTheme.textSm.copyWith(
-                            color: context.customColorTheme.mutedForeground,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: context.customColorTheme.input,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: _bairroController,
-                              decoration: InputDecoration(
-                                labelText: 'Bairro',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _cepController,
-                              decoration: InputDecoration(
-                                labelText: 'CEP',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: _municipioController,
-                              decoration: InputDecoration(
-                                labelText: 'Município',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _uf,
-                              decoration: InputDecoration(
-                                labelText: 'UF',
-                                labelStyle: context.customTextTheme.textSm.copyWith(
-                                  color: context.customColorTheme.mutedForeground,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: context.customColorTheme.input,
-                              ),
-                              items: ['SP', 'RJ', 'MG', 'RS', 'PR', 'SC', 'BA', 'GO', 'PE', 'CE']
-                                  .map((uf) => DropdownMenuItem<String>(
-                                        value: uf,
-                                        child: Text(uf),
-                                      ))
-                                  .toList(),
-                              onChanged: (value) => setState(() => _uf = value!),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Footer com botões
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: context.customColorTheme.border,
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(
-                      'Cancelar',
-                      style: context.customTextTheme.textSmMedium.copyWith(
-                        color: context.customColorTheme.mutedForeground,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: widget.viewModel.isAnyCommandRunning ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: context.customColorTheme.primary,
-                      foregroundColor: context.customColorTheme.primaryForeground,
-                    ),
-                    child: widget.viewModel.isAnyCommandRunning
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: context.customColorTheme.primaryForeground,
-                            ),
-                          )
-                        : Text(
-                            _isEditing ? 'Salvar' : 'Criar',
-                            style: context.customTextTheme.textSmMedium,
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      },
     );
   }
 }

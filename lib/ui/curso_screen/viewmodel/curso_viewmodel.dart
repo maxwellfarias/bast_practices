@@ -1,264 +1,159 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mastering_tests/data/repositories/curso/curso_repository.dart';
-import 'package:mastering_tests/data/repositories/curso/curso_repository_impl.dart';
 import 'package:mastering_tests/domain/models/curso_model.dart';
 import 'package:mastering_tests/utils/command.dart';
 import 'package:mastering_tests/utils/result.dart';
 
-/// ViewModel para gerenciar estado e operações da tela de Cursos
-/// Implementa Command pattern para todas as operações CRUD
-class CursoViewModel extends ChangeNotifier {
-  final CursoRepository _repository = CursoRepositoryImpl();
+final class CursoViewModel extends ChangeNotifier {
+  CursoViewModel({required CursoRepository cursoRepository}) : _cursoRepository = cursoRepository {
+    
+    // Inicializar os 5 commands obrigatórios
+    _getAllCursosCommand = Command0<List<Cursos>>(_getAllCursos);
+    _getCursoByIdCommand = Command1<Cursos, int>(_getCursoById);
+    _createCursoCommand = Command1<Cursos, Cursos>(_createCurso);
+    _updateCursoCommand = Command1<Cursos, Cursos>(_updateCurso);
+    _deleteCursoCommand = Command1<bool, int>(_deleteCurso);
+  }
 
-  // Lista de cursos carregados
-  List<Cursos> _cursos = [];
-  List<Cursos> get cursos => _cursos;
+  final CursoRepository _cursoRepository;
 
-  // Curso selecionado/editando
-  Cursos? _cursoSelecionado;
-  Cursos? get cursoSelecionado => _cursoSelecionado;
-
-  // Estados de filtro e busca
-  String _termoBusca = '';
-  String get termoBusca => _termoBusca;
-
-  String? _filtroModalidade;
-  String? get filtroModalidade => _filtroModalidade;
-
-  String? _filtroGrau;
-  String? get filtroGrau => _filtroGrau;
-
-  String? _filtroEstado;
-  String? get filtroEstado => _filtroEstado;
-
-  // Commands para operações CRUD
-  late final Command0<List<Cursos>> _loadCursosCommand;
-  late final Command1<Cursos, int> _loadCursoByIdCommand;
-  late final Command1<Cursos, Cursos> _addCursoCommand;
+  // Os 5 Commands obrigatórios
+  late final Command0<List<Cursos>> _getAllCursosCommand;
+  late final Command1<Cursos, int> _getCursoByIdCommand;
+  late final Command1<Cursos, Cursos> _createCursoCommand;
   late final Command1<Cursos, Cursos> _updateCursoCommand;
   late final Command1<bool, int> _deleteCursoCommand;
 
-  // Getters para os commands
-  Command0<List<Cursos>> get loadCursosCommand => _loadCursosCommand;
-  Command1<Cursos, int> get loadCursoByIdCommand => _loadCursoByIdCommand;
-  Command1<Cursos, Cursos> get addCursoCommand => _addCursoCommand;
+  // Getters públicos para os commands
+  Command0<List<Cursos>> get getAllCursosCommand => _getAllCursosCommand;
+  Command1<Cursos, int> get getCursoByIdCommand => _getCursoByIdCommand;
+  Command1<Cursos, Cursos> get createCursoCommand => _createCursoCommand;
   Command1<Cursos, Cursos> get updateCursoCommand => _updateCursoCommand;
   Command1<bool, int> get deleteCursoCommand => _deleteCursoCommand;
 
-  CursoViewModel() {
-    _initCommands();
-    loadCursos();
-  }
+  // Estado interno
+  List<Cursos> _cursos = [];
+  List<Cursos> get cursos => _cursos;
 
-  void _initCommands() {
-    _loadCursosCommand = Command0<List<Cursos>>(_loadCursos);
-    _loadCursoByIdCommand = Command1<Cursos, int>(_loadCursoById);
-    _addCursoCommand = Command1<Cursos, Cursos>(_addCurso);
-    _updateCursoCommand = Command1<Cursos, Cursos>(_updateCurso);
-    _deleteCursoCommand = Command1<bool, int>(_deleteCurso);
+  // Implementações dos métodos que serão chamados pelos commands
 
-    // Escuta mudanças nos commands para atualizar a lista quando necessário
-    _addCursoCommand.addListener(_onCrudCommandComplete);
-    _updateCursoCommand.addListener(_onCrudCommandComplete);
-    _deleteCursoCommand.addListener(_onCrudCommandComplete);
-  }
-
-  void _onCrudCommandComplete() {
-    // Recarrega lista após operações de modificação
-    if (_addCursoCommand.completed || 
-        _updateCursoCommand.completed || 
-        _deleteCursoCommand.completed) {
-      loadCursos();
-    }
-  }
-
-  // Implementações das operações de repository
-  Future<Result<List<Cursos>>> _loadCursos() async {
-    final result = await _repository.getCursos();
-    if (result is Ok<List<Cursos>>) {
-      _cursos = result.value;
+  /// 1. Buscar todos os cursos
+  Future<Result<List<Cursos>>> _getAllCursos() async {
+    final result = await _cursoRepository.getAllCursos();
+    
+    if (result case Ok(:final value)) {
+      _cursos = value;
       notifyListeners();
     }
+    
     return result;
   }
 
-  Future<Result<Cursos>> _loadCursoById(int cursoId) async {
-    return await _repository.getCursoById(cursoId);
+  /// 2. Buscar curso por ID
+  Future<Result<Cursos>> _getCursoById(int cursoId) async {
+    return await _cursoRepository.getCursoById(cursoId: cursoId);
   }
 
-  Future<Result<Cursos>> _addCurso(Cursos curso) async {
-    return await _repository.addCurso(curso);
-  }
-
-  Future<Result<Cursos>> _updateCurso(Cursos curso) async {
-    return await _repository.updateCurso(curso);
-  }
-
-  Future<Result<bool>> _deleteCurso(int cursoId) async {
-    return await _repository.deleteCurso(cursoId);
-  }
-
-  // Métodos públicos para controle da tela
-  
-  /// Carrega lista de cursos
-  Future<void> loadCursos() async {
-    await _loadCursosCommand.execute();
-  }
-
-  /// Carrega curso específico por ID
-  Future<void> loadCursoById(int cursoId) async {
-    await _loadCursoByIdCommand.execute(cursoId);
-    if (_loadCursoByIdCommand.completed) {
-      _cursoSelecionado = _loadCursoByIdCommand.value;
+  /// 3. Criar curso
+  Future<Result<Cursos>> _createCurso(Cursos curso) async {
+    final result = await _cursoRepository.createCurso(curso: curso);
+    
+    if (result case Ok(:final value)) {
+      _cursos.add(value);
       notifyListeners();
     }
+    
+    return result;
   }
 
-  /// Adiciona novo curso
-  Future<void> addCurso(Cursos curso) async {
-    await _addCursoCommand.execute(curso);
+  /// 4. Atualizar curso
+  Future<Result<Cursos>> _updateCurso(Cursos curso) async {
+    final result = await _cursoRepository.updateCurso(curso: curso);
+    
+    if (result case Ok(:final value)) {
+      final index = _cursos.indexWhere((c) => c.cursoID == value.cursoID);
+      if (index != -1) {
+        _cursos[index] = value;
+        notifyListeners();
+      }
+    }
+    
+    return result;
   }
 
-  /// Atualiza curso existente
+  /// 5. Deletar curso
+  Future<Result<bool>> _deleteCurso(int cursoId) async {
+    final result = await _cursoRepository.deleteCurso(cursoId: cursoId);
+    
+    if (result case Ok()) {
+      _cursos.removeWhere((curso) => curso.cursoID == cursoId);
+      notifyListeners();
+    }
+    
+    return result;
+  }
+
+  // Métodos públicos para execução dos commands
+
+  /// Executa busca de todos os cursos
+  Future<void> getAllCursos() async {
+    await _getAllCursosCommand.execute();
+  }
+
+  /// Executa busca de curso por ID
+  Future<void> getCursoById(int cursoId) async {
+    await _getCursoByIdCommand.execute(cursoId);
+  }
+
+  /// Executa criação de curso
+  Future<void> createCurso(Cursos curso) async {
+    await _createCursoCommand.execute(curso);
+  }
+
+  /// Executa atualização de curso
   Future<void> updateCurso(Cursos curso) async {
     await _updateCursoCommand.execute(curso);
   }
 
-  /// Remove curso
+  /// Executa exclusão de curso
   Future<void> deleteCurso(int cursoId) async {
     await _deleteCursoCommand.execute(cursoId);
   }
 
-  // Métodos para controle de estado da UI
-
-  /// Define curso selecionado
-  void setCursoSelecionado(Cursos? curso) {
-    _cursoSelecionado = curso;
-    notifyListeners();
-  }
-
-  /// Limpa curso selecionado
-  void clearCursoSelecionado() {
-    _cursoSelecionado = null;
-    notifyListeners();
-  }
-
-  /// Atualiza termo de busca e filtra cursos
-  void setBusca(String termo) {
-    _termoBusca = termo;
-    notifyListeners();
-  }
-
-  /// Define filtro por modalidade
-  void setFiltroModalidade(String? modalidade) {
-    _filtroModalidade = modalidade;
-    notifyListeners();
-  }
-
-  /// Define filtro por grau conferido
-  void setFiltroGrau(String? grau) {
-    _filtroGrau = grau;
-    notifyListeners();
-  }
-
-  /// Define filtro por estado
-  void setFiltroEstado(String? estado) {
-    _filtroEstado = estado;
-    notifyListeners();
-  }
-
-  /// Limpa todos os filtros
-  void clearFiltros() {
-    _termoBusca = '';
-    _filtroModalidade = null;
-    _filtroGrau = null;
-    _filtroEstado = null;
-    notifyListeners();
-  }
-
-  /// Obtém lista filtrada de cursos baseada nos filtros ativos
-  List<Cursos> get cursosFiltrados {
-    var cursosFiltrados = List<Cursos>.from(_cursos);
-
-    // Filtro por termo de busca
-    if (_termoBusca.isNotEmpty) {
-      cursosFiltrados = cursosFiltrados.where((curso) {
-        final termo = _termoBusca.toLowerCase();
-        return curso.nomeCurso.toLowerCase().contains(termo) ||
-               (curso.codigoCursoEMEC?.toString().contains(termo) ?? false) ||
-               curso.modalidade.toLowerCase().contains(termo) ||
-               curso.grauConferido.toLowerCase().contains(termo) ||
-               curso.nomeMunicipio.toLowerCase().contains(termo) ||
-               curso.uf.toLowerCase().contains(termo);
-      }).toList();
-    }
-
-    // Filtro por modalidade
-    if (_filtroModalidade != null && _filtroModalidade!.isNotEmpty) {
-      cursosFiltrados = cursosFiltrados.where((curso) => 
-          curso.modalidade == _filtroModalidade
-      ).toList();
-    }
-
-    // Filtro por grau
-    if (_filtroGrau != null && _filtroGrau!.isNotEmpty) {
-      cursosFiltrados = cursosFiltrados.where((curso) => 
-          curso.grauConferido == _filtroGrau
-      ).toList();
-    }
-
-    // Filtro por estado
-    if (_filtroEstado != null && _filtroEstado!.isNotEmpty) {
-      cursosFiltrados = cursosFiltrados.where((curso) => 
-          curso.uf == _filtroEstado
-      ).toList();
-    }
-
-    return cursosFiltrados;
-  }
-
-  /// Verifica se há algum command em execução
-  bool get isAnyCommandRunning {
-    return _loadCursosCommand.running ||
-           _loadCursoByIdCommand.running ||
-           _addCursoCommand.running ||
+  // Estado de loading geral
+  bool get isLoading {
+    return _getAllCursosCommand.running ||
+           _getCursoByIdCommand.running ||
+           _createCursoCommand.running ||
            _updateCursoCommand.running ||
            _deleteCursoCommand.running;
   }
 
-  /// Verifica se há erro em algum command
-  bool get hasAnyCommandError {
-    return _loadCursosCommand.error ||
-           _loadCursoByIdCommand.error ||
-           _addCursoCommand.error ||
+  // Estado de erro geral
+  bool get hasError {
+    return _getAllCursosCommand.error ||
+           _getCursoByIdCommand.error ||
+           _createCursoCommand.error ||
            _updateCursoCommand.error ||
            _deleteCursoCommand.error;
   }
 
-  /// Obtém mensagem de erro de qualquer command
-  String? get anyCommandErrorMessage {
-    if (_loadCursosCommand.error) return _loadCursosCommand.errorMessage;
-    if (_loadCursoByIdCommand.error) return _loadCursoByIdCommand.errorMessage;
-    if (_addCursoCommand.error) return _addCursoCommand.errorMessage;
+  // Mensagem de erro geral
+  String? get errorMessage {
+    if (_getAllCursosCommand.error) return _getAllCursosCommand.errorMessage;
+    if (_getCursoByIdCommand.error) return _getCursoByIdCommand.errorMessage;
+    if (_createCursoCommand.error) return _createCursoCommand.errorMessage;
     if (_updateCursoCommand.error) return _updateCursoCommand.errorMessage;
     if (_deleteCursoCommand.error) return _deleteCursoCommand.errorMessage;
     return null;
   }
 
-  /// Limpa todos os resultados de commands
-  void clearAllCommandResults() {
-    _loadCursosCommand.clearResult();
-    _loadCursoByIdCommand.clearResult();
-    _addCursoCommand.clearResult();
+  // Limpar todos os resultados
+  void clearResults() {
+    _getAllCursosCommand.clearResult();
+    _getCursoByIdCommand.clearResult();
+    _createCursoCommand.clearResult();
     _updateCursoCommand.clearResult();
     _deleteCursoCommand.clearResult();
-  }
-
-  @override
-  void dispose() {
-    _addCursoCommand.removeListener(_onCrudCommandComplete);
-    _updateCursoCommand.removeListener(_onCrudCommandComplete);
-    _deleteCursoCommand.removeListener(_onCrudCommandComplete);
-    super.dispose();
   }
 }
