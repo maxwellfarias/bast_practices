@@ -365,6 +365,35 @@ final class TaskViewModel extends ChangeNotifier {
 - `ListenableBuilder`: Estados loading/error/empty/success
 - **CONVERSÃO DE ESTILOS OBRIGATÓRIA**: Tipografia e cores conforme mapeamentos abaixo
 
+**⚠️ ORGANIZAÇÃO DE COMPONENTES OBRIGATÓRIA:**
+
+Para evitar que a screen principal fique muito grande, **DEVE-SE** criar uma pasta `componentes` dentro da estrutura:
+
+```
+/lib/ui/{nome_tela}/widget/
+├── {nome_tela}.dart                    # ← Screen principal (LIMPA E ENXUTA)
+└── componentes/                        # ← Pasta obrigatória para componentes
+    ├── {nome_tela}_card.dart          # ← Card/item da lista
+    ├── {nome_tela}_form_dialog.dart   # ← Modal de criação/edição  
+    ├── {nome_tela}_filter_bar.dart    # ← Barra de filtros
+    ├── {nome_tela}_stats_panel.dart   # ← Painel de estatísticas
+    └── {nome_tela}_empty_state.dart   # ← Estado vazio customizado
+```
+
+**🚫 NÃO CRIAR componentes muito pequenos** (menos de 30 linhas) - prefira manter na screen principal.
+
+**✅ CRIAR componentes quando tiver:**
+
+- Cards complexos com múltiplas interações
+- Formulários de criação/edição
+- Modais ou dialogs elaborados
+- Barras de filtro ou busca
+- Painéis de estatísticas
+- Estados vazios customizados
+- Seções com lógica própria
+
+###
+
 #### 🎨 **MAPEAMENTO DE ESTILOS OBRIGATÓRIO**
 
 ##### 📝 **Tipografia (React Tailwind → Flutter CustomTextTheme)**

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:mastering_tests/domain/models/curso_model.dart';
 import 'package:mastering_tests/ui/curso_screen/viewmodel/curso_viewmodel.dart';
-import 'package:mastering_tests/ui/curso_screen/widget/curso_form_dialog.dart';
-import 'package:mastering_tests/ui/curso_screen/widget/curso_view_dialog.dart';
 import 'package:mastering_tests/ui/core/extensions/build_context_extension.dart';
 import 'package:mastering_tests/utils/command.dart';
+import 'componentes/curso_card.dart';
+import 'componentes/curso_form_dialog.dart';
+import 'componentes/curso_details_dialog.dart';
 
 final class CursoScreen extends StatefulWidget {
   final CursoViewModel viewModel;
@@ -17,32 +18,51 @@ final class CursoScreen extends StatefulWidget {
 }
 
 class _CursoScreenState extends State<CursoScreen> {
-  String _searchTerm = "";
+  String _searchTerm = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     // LISTENERS OBRIGATÓRIOS PARA 3 COMMANDS
-    widget.viewModel.updateCursoCommand.addListener(() => _onResult(command: widget.viewModel.updateCursoCommand, successMessage: 'Curso atualizado com sucesso!'));
-    widget.viewModel.deleteCursoCommand.addListener(() => _onResult(command: widget.viewModel.deleteCursoCommand, successMessage: 'Curso excluído com sucesso!'));
-    widget.viewModel.createCursoCommand.addListener(() => _onResult(command: widget.viewModel.createCursoCommand, successMessage: 'Curso criado com sucesso!'));
+    widget.viewModel.updateCursoCommand.addListener(() => _onResult(
+        command: widget.viewModel.updateCursoCommand, 
+        successMessage: 'Curso atualizado com sucesso!'
+    ));
+    widget.viewModel.deleteCursoCommand.addListener(() => _onResult(
+        command: widget.viewModel.deleteCursoCommand, 
+        successMessage: 'Curso excluído com sucesso!'
+    ));
+    widget.viewModel.createCursoCommand.addListener(() => _onResult(
+        command: widget.viewModel.createCursoCommand, 
+        successMessage: 'Curso criado com sucesso!'
+    ));
     // EXECUTAR GET ALL OBRIGATÓRIO
-    widget.viewModel.getAllCursos();
+    widget.viewModel.getAllCursosCommand.execute();
   }
 
   @override
   void dispose() {
     // DISPOSE DE TODOS OS LISTENERS OBRIGATÓRIO
-    widget.viewModel.updateCursoCommand.removeListener(() => _onResult(command: widget.viewModel.updateCursoCommand, successMessage: 'Curso atualizado com sucesso!'));
-    widget.viewModel.deleteCursoCommand.removeListener(() => _onResult(command: widget.viewModel.deleteCursoCommand, successMessage: 'Curso excluído com sucesso!'));
-    widget.viewModel.createCursoCommand.removeListener(() => _onResult(command: widget.viewModel.createCursoCommand, successMessage: 'Curso criado com sucesso!'));
-    
+    widget.viewModel.updateCursoCommand.removeListener(() => _onResult(
+        command: widget.viewModel.updateCursoCommand, 
+        successMessage: 'Curso atualizado com sucesso!'
+    ));
+    widget.viewModel.deleteCursoCommand.removeListener(() => _onResult(
+        command: widget.viewModel.deleteCursoCommand, 
+        successMessage: 'Curso excluído com sucesso!'
+    ));
+    widget.viewModel.createCursoCommand.removeListener(() => _onResult(
+        command: widget.viewModel.createCursoCommand, 
+        successMessage: 'Curso criado com sucesso!'
+    ));
+    _searchController.dispose();
     super.dispose();
   }
 
   /// MÉTODO _onResult OBRIGATÓRIO PARA FEEDBACK VISUAL
   void _onResult({required Command command, required String successMessage}) {
-    if(command.error) {
+    if (command.error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro: ${command.errorMessage ?? 'Ocorreu um erro desconhecido.'}'),
@@ -61,94 +81,126 @@ class _CursoScreenState extends State<CursoScreen> {
 
   List<Cursos> get _filteredCursos {
     if (_searchTerm.isEmpty) return widget.viewModel.cursos;
+    
     return widget.viewModel.cursos.where((curso) =>
       curso.nomeCurso.toLowerCase().contains(_searchTerm.toLowerCase()) ||
       curso.tituloConferido.toLowerCase().contains(_searchTerm.toLowerCase()) ||
       curso.modalidade.toLowerCase().contains(_searchTerm.toLowerCase()) ||
-      curso.grauConferido.toLowerCase().contains(_searchTerm.toLowerCase())
+      curso.grauConferido.toLowerCase().contains(_searchTerm.toLowerCase()) ||
+      curso.nomeMunicipio.toLowerCase().contains(_searchTerm.toLowerCase()) ||
+      curso.uf.toLowerCase().contains(_searchTerm.toLowerCase())
     ).toList();
   }
 
-  String _getModalidadeBadgeColor(String modalidade) {
-    switch (modalidade) {
-      case "Presencial":
-        return "primary";
-      case "EaD":
-        return "secondary";
-      case "Híbrido":
-        return "accent";
-      default:
-        return "muted";
-    }
-  }
-
-  void _openCreateDialog() {
+  void _showCreateDialog() {
     showDialog(
       context: context,
       builder: (context) => CursoFormDialog(
-        title: 'Criar Novo Curso',
-        description: 'Preencha as informações do novo curso',
-        onSubmit: (curso) => widget.viewModel.createCurso(curso),
-        isEdit: false,
+        viewModel: widget.viewModel,
+        onSubmit: (curso) => widget.viewModel.createCursoCommand.execute(curso),
       ),
     );
   }
 
-  void _openEditDialog(Cursos curso) {
+  void _showEditDialog(Cursos curso) {
     showDialog(
       context: context,
       builder: (context) => CursoFormDialog(
-        title: 'Editar Curso',
-        description: 'Atualize as informações do curso',
-        initialCurso: curso,
-        onSubmit: (updatedCurso) => widget.viewModel.updateCurso(updatedCurso),
-        isEdit: true,
-      ),
-    );
-  }
-
-  void _openViewDialog(Cursos curso) {
-    showDialog(
-      context: context,
-      builder: (context) => CursoViewDialog(
+        viewModel: widget.viewModel,
         curso: curso,
-        onEdit: () => _openEditDialog(curso),
+        onSubmit: (updatedCurso) => widget.viewModel.updateCursoCommand.execute(updatedCurso),
       ),
     );
   }
 
-  void _handleDeleteCurso(int cursoID) {
-    widget.viewModel.deleteCurso(cursoID);
+  void _showDetailsDialog(Cursos curso) {
+    showDialog(
+      context: context,
+      builder: (context) => CursoDetailsDialog(
+        curso: curso,
+        onEdit: () {
+          Navigator.of(context).pop(); // Fecha o dialog de detalhes
+          _showEditDialog(curso); // Abre o dialog de edição
+        },
+      ),
+    );
+  }
+
+  void _deleteCurso(int cursoId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.customColorTheme.card,
+        title: Text(
+          'Excluir Curso',
+          style: context.customTextTheme.textXlSemibold.copyWith(
+            color: context.customColorTheme.cardForeground,
+          ),
+        ),
+        content: Text(
+          'Tem certeza que deseja excluir este curso? Esta ação não pode ser desfeita.',
+          style: context.customTextTheme.textBase.copyWith(
+            color: context.customColorTheme.mutedForeground,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancelar',
+              style: context.customTextTheme.textSmMedium.copyWith(
+                color: context.customColorTheme.mutedForeground,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              widget.viewModel.deleteCursoCommand.execute(cursoId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: context.customColorTheme.destructive,
+              foregroundColor: context.customColorTheme.destructiveForeground,
+            ),
+            child: Text(
+              'Excluir',
+              style: context.customTextTheme.textSmMedium,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.customColorTheme.background,
       appBar: AppBar(
+        backgroundColor: context.customColorTheme.card,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           'Gestão de Cursos',
           style: context.customTextTheme.textXlSemibold.copyWith(
-            color: context.customColorTheme.foreground,
+            color: context.customColorTheme.cardForeground,
           ),
         ),
-        backgroundColor: context.customColorTheme.background,
-        elevation: 0,
         actions: [
           IconButton(
             icon: Icon(
               Icons.refresh,
               color: context.customColorTheme.primary,
             ),
-            onPressed: () => widget.viewModel.getAllCursos(),
+            onPressed: () => widget.viewModel.getAllCursosCommand.execute(),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Header with search and create button
+          // Header com busca e botão criar
           Container(
-            padding: const EdgeInsets.all(16),
             color: context.customColorTheme.card,
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
                 Row(
@@ -158,16 +210,10 @@ class _CursoScreenState extends State<CursoScreen> {
                         decoration: BoxDecoration(
                           color: context.customColorTheme.input,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: context.customColorTheme.border,
-                            width: 1,
-                          ),
+                          border: Border.all(color: context.customColorTheme.border),
                         ),
                         child: TextField(
-                          onChanged: (value) => setState(() => _searchTerm = value),
-                          style: context.customTextTheme.textBase.copyWith(
-                            color: context.customColorTheme.foreground,
-                          ),
+                          controller: _searchController,
                           decoration: InputDecoration(
                             hintText: 'Buscar cursos...',
                             hintStyle: context.customTextTheme.textBase.copyWith(
@@ -180,21 +226,25 @@ class _CursoScreenState extends State<CursoScreen> {
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           ),
+                          style: context.customTextTheme.textBase.copyWith(
+                            color: context.customColorTheme.foreground,
+                          ),
+                          onChanged: (value) => setState(() => _searchTerm = value),
                         ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     ElevatedButton.icon(
-                      onPressed: _openCreateDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Novo Curso'),
+                      onPressed: _showCreateDialog,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: context.customColorTheme.primary,
                         foregroundColor: context.customColorTheme.primaryForeground,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(
+                        'Novo Curso',
+                        style: context.customTextTheme.textSmMedium,
                       ),
                     ),
                   ],
@@ -203,7 +253,7 @@ class _CursoScreenState extends State<CursoScreen> {
             ),
           ),
           
-          // Content area
+          // Lista de cursos
           Expanded(
             child: ListenableBuilder(
               listenable: Listenable.merge([
@@ -213,55 +263,64 @@ class _CursoScreenState extends State<CursoScreen> {
               builder: (context, _) {
                 /// ESTADO LOADING OBRIGATÓRIO
                 if (widget.viewModel.getAllCursosCommand.running) {
-                  return Container(
-                    color: context.customColorTheme.background,
-                    child: const Center(
-                      child: CupertinoActivityIndicator(radius: 16),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CupertinoActivityIndicator(radius: 20),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Carregando cursos...',
+                          style: context.customTextTheme.textBase.copyWith(
+                            color: context.customColorTheme.mutedForeground,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
 
                 /// ESTADO ERROR OBRIGATÓRIO
                 if (widget.viewModel.getAllCursosCommand.error) {
-                  return Container(
-                    color: context.customColorTheme.background,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 48,
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: context.customColorTheme.destructive,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Erro ao carregar cursos',
+                            style: context.customTextTheme.textLgSemibold.copyWith(
                               color: context.customColorTheme.destructive,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Erro ao carregar cursos',
-                              style: context.customTextTheme.textLgSemibold.copyWith(
-                                color: context.customColorTheme.destructive,
-                              ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.viewModel.getAllCursosCommand.errorMessage ?? 'Ocorreu um erro desconhecido',
+                            style: context.customTextTheme.textBase.copyWith(
+                              color: context.customColorTheme.mutedForeground,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              widget.viewModel.getAllCursosCommand.errorMessage ?? 'Ocorreu um erro desconhecido',
-                              style: context.customTextTheme.textBase.copyWith(
-                                color: context.customColorTheme.mutedForeground,
-                              ),
-                              textAlign: TextAlign.center,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => widget.viewModel.getAllCursosCommand.execute(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: context.customColorTheme.primary,
+                              foregroundColor: context.customColorTheme.primaryForeground,
                             ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => widget.viewModel.getAllCursos(),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: context.customColorTheme.primary,
-                                foregroundColor: context.customColorTheme.primaryForeground,
-                              ),
-                              child: const Text('Tentar novamente'),
+                            child: Text(
+                              'Tentar Novamente',
+                              style: context.customTextTheme.textSmMedium,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -269,330 +328,86 @@ class _CursoScreenState extends State<CursoScreen> {
 
                 /// ESTADO EMPTY OBRIGATÓRIO
                 if (_filteredCursos.isEmpty) {
-                  return Container(
-                    color: context.customColorTheme.background,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.school_outlined,
-                            size: 64,
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _searchTerm.isNotEmpty ? Icons.search_off : Icons.school_outlined,
+                          size: 48,
+                          color: context.customColorTheme.mutedForeground,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchTerm.isNotEmpty 
+                              ? 'Nenhum curso encontrado'
+                              : 'Nenhum curso cadastrado',
+                          style: context.customTextTheme.textLgMedium.copyWith(
                             color: context.customColorTheme.mutedForeground,
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _searchTerm.isNotEmpty 
+                              ? 'Tente ajustar os filtros de busca'
+                              : 'Comece criando o primeiro curso',
+                          style: context.customTextTheme.textBase.copyWith(
+                            color: context.customColorTheme.mutedForeground,
+                          ),
+                        ),
+                        if (_searchTerm.isEmpty) ...[
                           const SizedBox(height: 16),
-                          Text(
-                            widget.viewModel.cursos.isEmpty ? 'Nenhum curso encontrado' : 'Nenhum curso corresponde à busca',
-                            style: context.customTextTheme.textLgMedium.copyWith(
-                              color: context.customColorTheme.mutedForeground,
+                          ElevatedButton.icon(
+                            onPressed: _showCreateDialog,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: context.customColorTheme.primary,
+                              foregroundColor: context.customColorTheme.primaryForeground,
+                            ),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text(
+                              'Criar Primeiro Curso',
+                              style: context.customTextTheme.textSmMedium,
                             ),
                           ),
-                          if (widget.viewModel.cursos.isEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              'Comece criando seu primeiro curso',
-                              style: context.customTextTheme.textBase.copyWith(
-                                color: context.customColorTheme.mutedForeground,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _openCreateDialog,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Criar Primeiro Curso'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: context.customColorTheme.primary,
-                                foregroundColor: context.customColorTheme.primaryForeground,
-                              ),
-                            ),
-                          ],
                         ],
-                      ),
+                      ],
                     ),
                   );
                 }
 
                 /// ESTADO SUCCESS - LISTA DE DADOS
-                return Container(
-                  color: context.customColorTheme.background,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredCursos.length,
-                    itemBuilder: (context, index) {
-                      final curso = _filteredCursos[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        color: context.customColorTheme.card,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: context.customColorTheme.border,
-                            width: 1,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header with title and badges
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.school,
-                                    color: context.customColorTheme.primary,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          curso.nomeCurso,
-                                          style: context.customTextTheme.textLgSemibold.copyWith(
-                                            color: context.customColorTheme.cardForeground,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          curso.tituloConferido,
-                                          style: context.customTextTheme.textSm.copyWith(
-                                            color: context.customColorTheme.mutedForeground,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: _getModalidadeBadgeColor(curso.modalidade) == "primary" 
-                                              ? context.customColorTheme.primary 
-                                              : _getModalidadeBadgeColor(curso.modalidade) == "secondary" 
-                                                  ? context.customColorTheme.secondary 
-                                                  : context.customColorTheme.accent,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          curso.modalidade,
-                                          style: context.customTextTheme.textXs.copyWith(
-                                            color: _getModalidadeBadgeColor(curso.modalidade) == "primary" 
-                                                ? context.customColorTheme.primaryForeground 
-                                                : _getModalidadeBadgeColor(curso.modalidade) == "secondary" 
-                                                    ? context.customColorTheme.secondaryForeground 
-                                                    : context.customColorTheme.accentForeground,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      if (curso.codigoCursoEMEC != null) ...[
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: context.customColorTheme.muted,
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(
-                                              color: context.customColorTheme.border,
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'e-MEC ${curso.codigoCursoEMEC}',
-                                            style: context.customTextTheme.textXs.copyWith(
-                                              color: context.customColorTheme.mutedForeground,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 12),
-                              
-                              // Course details
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: context.customColorTheme.secondary,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        curso.grauConferido,
-                                        style: context.customTextTheme.textXs.copyWith(
-                                          color: context.customColorTheme.secondaryForeground,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.location_on,
-                                    size: 16,
-                                    color: context.customColorTheme.mutedForeground,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      '${curso.nomeMunicipio}, ${curso.uf}',
-                                      style: context.customTextTheme.textSm.copyWith(
-                                        color: context.customColorTheme.mutedForeground,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              // Authorization and Recognition info
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Autorização: ${curso.autorizacaoNumero}',
-                                          style: context.customTextTheme.textXs.copyWith(
-                                            color: context.customColorTheme.mutedForeground,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Reconhecimento: ${curso.reconhecimentoNumero}',
-                                          style: context.customTextTheme.textXs.copyWith(
-                                            color: context.customColorTheme.mutedForeground,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // Action buttons
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => _openViewDialog(curso),
-                                      icon: const Icon(Icons.visibility, size: 16),
-                                      label: const Text('Ver Detalhes'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: context.customColorTheme.primary,
-                                        side: BorderSide(color: context.customColorTheme.border),
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () => _openEditDialog(curso),
-                                      icon: const Icon(Icons.edit, size: 16),
-                                      label: const Text('Editar'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: context.customColorTheme.primary,
-                                        foregroundColor: context.customColorTheme.primaryForeground,
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  OutlinedButton(
-                                    onPressed: () => _showDeleteConfirmation(curso),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: context.customColorTheme.destructive,
-                                      side: BorderSide(color: context.customColorTheme.destructive),
-                                      padding: const EdgeInsets.all(8),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      minimumSize: const Size(40, 32),
-                                    ),
-                                    child: const Icon(Icons.delete, size: 16),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    int crossAxisCount = 1;
+                    if (constraints.maxWidth >= 1200) crossAxisCount = 3;
+                    else if (constraints.maxWidth >= 800) crossAxisCount = 2;
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: 1.2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: _filteredCursos.length,
+                      itemBuilder: (context, index) {
+                        final curso = _filteredCursos[index];
+                        return CursoCard(
+                          curso: curso,
+                          onView: () => _showDetailsDialog(curso),
+                          onEdit: () => _showEditDialog(curso),
+                          onDelete: () => _deleteCurso(curso.cursoID),
+                        );
+                      },
+                    );
+                  },
                 );
               },
             ),
           ),
         ],
       ),
-    );
-  }
-
-  void _showDeleteConfirmation(Cursos curso) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: context.customColorTheme.card,
-          title: Text(
-            'Excluir Curso',
-            style: context.customTextTheme.textLgSemibold.copyWith(
-              color: context.customColorTheme.cardForeground,
-            ),
-          ),
-          content: Text(
-            'Tem certeza que deseja excluir o curso "${curso.nomeCurso}"? Esta ação não pode ser desfeita.',
-            style: context.customTextTheme.textBase.copyWith(
-              color: context.customColorTheme.mutedForeground,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancelar',
-                style: context.customTextTheme.textBase.copyWith(
-                  color: context.customColorTheme.mutedForeground,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _handleDeleteCurso(curso.cursoID);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: context.customColorTheme.destructive,
-                foregroundColor: context.customColorTheme.destructiveForeground,
-              ),
-              child: const Text('Excluir'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

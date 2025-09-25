@@ -16,6 +16,7 @@ GoRouter router() => GoRouter(
     GoRoute(
       path: Routes.home,
       builder: (context, state) {
+        // return Container();
         return CursoScreen(viewModel: CursoViewModel(cursoRepository: context.read()));
       },
     ),
