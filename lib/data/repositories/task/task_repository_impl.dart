@@ -27,11 +27,7 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<Result<TaskModel>> createTask({required TaskModel task}) async {
     try {
       final response = await _apiService
-          .request(
-            url: '$_baseUrl/tasks',
-            metodo: MetodoHttp.post,
-            body: task.toJson(),
-          )
+          .request(url: '$_baseUrl/tasks',metodo: MetodoHttp.post, body: task.toJson())
           .map(TaskModel.fromJson);
       return response;
     } catch (e, stackTrace) {
@@ -43,10 +39,8 @@ class TaskRepositoryImpl implements TaskRepository {
   @override
   Future<Result<dynamic>> deleteTask({required String taskId}) async {
     try {
-      final response = await _apiService.request(
-        url: '$_baseUrl/tasks/$taskId',
-        metodo: MetodoHttp.delete,
-      );
+      final response = await _apiService
+      .request(url: '$_baseUrl/tasks/$taskId', metodo: MetodoHttp.delete);
       return response;
     } catch (e, stackTrace) {
       _logger.error('Error in deleteTask: $e', stackTrace: stackTrace);
@@ -57,11 +51,11 @@ class TaskRepositoryImpl implements TaskRepository {
   @override
   Future<Result<List<TaskModel>>> getAllTasks() async {
     try {
-      final response =
-          await _apiService.request(url: '$_baseUrl/tasks', metodo: MetodoHttp.get).map((data) {
-        final List<dynamic> dataList = data as List<dynamic>;
-        return dataList.map((item) => TaskModel.fromJson(item)).toList();
-      });
+      final response = await _apiService
+      .request(url: '$_baseUrl/tasks', metodo: .get)
+      .map((data) => (data as List)
+      .map(TaskModel.fromJson)
+      .toList());
       return response;
     } catch (e, stackTrace) {
       _logger.error('Error in getAllTasks: $e', stackTrace: stackTrace);
@@ -73,7 +67,7 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<Result<TaskModel>> getTaskBy({required String taskId}) async {
     try {
       final response = await _apiService
-          .request(url: '$_baseUrl/tasks/$taskId', metodo: MetodoHttp.get)
+          .request(url: '$_baseUrl/tasks/$taskId', metodo: .get)
           .map(TaskModel.fromJson);
       return response;
     } catch (e, stackTrace) {
@@ -86,11 +80,7 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<Result<TaskModel>> updateTask({required TaskModel task}) async {
     try {
       final response = await _apiService
-          .request(
-            url: '$_baseUrl/tasks/${task.id}',
-            metodo: MetodoHttp.put,
-            body: task.toJson(),
-          )
+          .request(url: '$_baseUrl/tasks/${task.id}', metodo: .put, body: task.toJson())
           .map(TaskModel.fromJson);
       return response;
     } catch (e, stackTrace) {

@@ -24,19 +24,19 @@ class ApiClientImpl implements ApiClient {
     try {
       Response response;
       switch (metodo) {
-        case MetodoHttp.post:
+        case .post:
           response = await _dio.post(url, options: Options(headers: defaultHeaders), data: body)
               .timeout(timeOutDuration);
           break;
-        case MetodoHttp.get:
+        case .get:
           response = await _dio.get(url, options: Options(headers: defaultHeaders))
               .timeout(timeOutDuration);
           break;
-        case MetodoHttp.put:
+        case .put:
           response = await _dio.put(url, options: Options(headers: defaultHeaders), data: body)
               .timeout(timeOutDuration);
           break;
-        case MetodoHttp.delete:
+        case .delete:
           response = await _dio.delete(url, options: Options(headers: defaultHeaders))
               .timeout(timeOutDuration);
           break;
