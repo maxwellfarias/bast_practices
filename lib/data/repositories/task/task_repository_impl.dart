@@ -14,27 +14,27 @@
       : _apiService = apiService;
       
         @override
-        Future<Result<TaskModel>> createTask({required String databaseId, required TaskModel task}) async {
+        Future<Result<TaskModel>> createTask({required TaskModel task}) async {
           return TaskMock.addTask(task);
         }
       
         @override
-        Future<Result<dynamic>> deleteTask({required String databaseId, required String taskId}) async {
+        Future<Result<dynamic>> deleteTask({required String taskId}) async {
               return Result.ok(TaskMock.deleteTask(taskId));
         }
       
         @override
-        Future<Result<List<TaskModel>>> getAllTasks({required String databaseId}) async {
+        Future<Result<List<TaskModel>>> getAllTasks() async {
           return TaskMock.getMockTasks();
         }
       
         @override
-        Future<Result<TaskModel>> getTaskBy({required String databaseId, required String taskId}) async {
+        Future<Result<TaskModel>> getTaskBy({required String taskId}) async {
           return TaskMock.getTaskById(taskId);
         }
       
         @override
-        Future<Result<TaskModel>> updateTask({required String databaseId, required TaskModel task}) async {
+        Future<Result<TaskModel>> updateTask({required TaskModel task}) async {
           return TaskMock.updateTask(task);
         }
 

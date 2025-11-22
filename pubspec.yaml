@@ -41,6 +41,7 @@ dependencies:
   # Utilities
   uuid: ^4.4.0
   equatable: ^2.0.5
+  logger: ^2.6.2
 
 dev_dependencies:
   flutter_test:

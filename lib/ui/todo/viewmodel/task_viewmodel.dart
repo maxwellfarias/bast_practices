@@ -23,7 +23,7 @@ final class TaskViewModel extends ChangeNotifier {
   late final Command1<dynamic, String> deleteTask;
 
   Future<Result<List<TaskModel>>> _getAllTasks() async {
-    return await _taskRepository.getAllTasks(databaseId: 'default')
+    return await _taskRepository.getAllTasks()
     .map((tasks) {
       _tasks
       ..clear()
@@ -34,11 +34,11 @@ final class TaskViewModel extends ChangeNotifier {
   }
 
   Future<Result<TaskModel>> _getTaskBy(String taskId) async {
-    return await _taskRepository.getTaskBy(databaseId: 'default', taskId: taskId);
+    return await _taskRepository.getTaskBy(taskId: taskId);
   }
 
   Future<Result<TaskModel>> _createTask(TaskModel task) async {
-    return await _taskRepository.createTask(databaseId: 'default', task: task)
+    return await _taskRepository.createTask(task: task)
     .map((createdTask) {
       _tasks.add(createdTask);
       notifyListeners();
@@ -47,7 +47,7 @@ final class TaskViewModel extends ChangeNotifier {
   }
 
   Future<Result<TaskModel>> _updateTask(TaskModel task) async {
-    return await _taskRepository.updateTask(databaseId: 'default', task: task)
+    return await _taskRepository.updateTask(task: task)
     .map((updatedTask) {
       final index = _tasks.indexWhere((t) => t.id == updatedTask.id);
       if (index != -1) {
@@ -59,7 +59,7 @@ final class TaskViewModel extends ChangeNotifier {
   }
 
   Future<Result<dynamic>> _deleteTask(String taskId) async {
-    return await _taskRepository.deleteTask(databaseId: 'default', taskId: taskId)
+    return await _taskRepository.deleteTask(taskId: taskId)
     .map((_) {
       _tasks.removeWhere((task) => task.id == taskId);
       notifyListeners();
