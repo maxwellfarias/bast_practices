@@ -194,7 +194,7 @@ class Command1<T, A> extends Command<T> {
 
 ### Repository Pattern
 
-Clean separation between data sources and business logic:
+Clean separation between data sources and business logic with two implementations:
 
 ```dart
 abstract class TaskRepository {
@@ -204,6 +204,40 @@ abstract class TaskRepository {
   Future<Result<TaskModel>> updateTask({required TaskModel task});
   Future<Result<dynamic>> deleteTask({required String taskId});
 }
+```
+
+#### TaskRepositoryMock (Default)
+Mock implementation using in-memory data for development and testing:
+- **No API calls** - works offline
+- **Instant responses** - no network latency
+- **Predictable data** - same mock data every time
+- **Perfect for development** - no backend needed
+
+```dart
+// Used by default in lib/config/dependencies.dart
+Provider(
+  create: (context) => TaskRepositoryMock() as TaskRepository,
+),
+```
+
+#### TaskRepositoryImpl (Real API)
+Real implementation making HTTP requests to backend API:
+- **Real data** - fetches from actual backend
+- **Full CRUD operations** - complete API integration
+- **Error handling** - network and server errors
+- **Production ready** - use when backend is available
+
+```dart
+// To use: uncomment in lib/config/dependencies.dart
+Provider(
+  create: (context) =>
+      TaskRepositoryImpl(
+            apiService: context.read<ApiClient>(),
+            baseUrl: "https://your-api-url.com/api",
+            logger: context.read<CustomLogger>(),
+          )
+          as TaskRepository,
+),
 ```
 
 ## Project Structure
@@ -256,6 +290,46 @@ flutter pub get
 ```bash
 flutter run
 ```
+
+### Switching Repository Implementations
+
+The app uses **TaskRepositoryMock** by default, which provides mock data without requiring a backend. To switch to the real API implementation:
+
+1. Open [lib/config/dependencies.dart](lib/config/dependencies.dart)
+
+2. Uncomment the `TaskRepositoryImpl` import:
+```dart
+import 'package:mastering_tests/data/repositories/task/task_repository_impl.dart';
+```
+
+3. Comment out the mock provider and uncomment the real API provider:
+```dart
+// Default: Mock repository (no API calls, uses in-memory data)
+// Provider(
+//   create: (context) => TaskRepositoryMock() as TaskRepository,
+// ),
+
+// Alternative: Real API repository
+Provider(
+  create: (context) =>
+      TaskRepositoryImpl(
+            apiService: context.read<ApiClient>(),
+            baseUrl: "https://your-api-url.com/api", // Update with your API URL
+            logger: context.read<CustomLogger>(),
+          )
+          as TaskRepository,
+),
+```
+
+4. Update the `baseUrl` with your actual API endpoint
+
+5. Hot restart the app
+
+This design allows you to:
+- **Develop offline** using mock data
+- **Test different scenarios** with controlled mock data
+- **Switch to production** by simply changing the dependency injection
+- **Run integration tests** against real API when needed
 
 ### Running Tests
 ```bash
