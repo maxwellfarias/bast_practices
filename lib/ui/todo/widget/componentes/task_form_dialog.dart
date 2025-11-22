@@ -1,0 +1,237 @@
+import 'package:flutter/material.dart';
+import 'package:mastering_tests/domain/models/task_model.dart';
+import 'package:mastering_tests/ui/core/extensions/build_context_extension.dart';
+
+/// Dialog para criação e edição de tarefas
+///
+/// Possui dois modos:
+/// - Criação: task == null
+/// - Edição: task != null
+class TaskFormDialog extends StatefulWidget {
+  final TaskModel? task;
+  final Function(String title, String description) onSave;
+
+  const TaskFormDialog({
+    super.key,
+    this.task,
+    required this.onSave,
+  });
+
+  @override
+  State<TaskFormDialog> createState() => _TaskFormDialogState();
+}
+
+class _TaskFormDialogState extends State<TaskFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.task?.title ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.task?.description ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _handleSave() {
+    if (_formKey.currentState?.validate() ?? false) {
+      widget.onSave(
+        _titleController.text.trim(),
+        _descriptionController.text.trim(),
+      );
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.task != null;
+
+    return Dialog(
+      backgroundColor: context.customColorTheme.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Título do Dialog
+              Text(
+                isEditing ? 'Editar Tarefa' : 'Nova Tarefa',
+                style: context.customTextTheme.text2xlBold.copyWith(
+                  color: context.customColorTheme.cardForeground,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Campo de Título
+              TextFormField(
+                controller: _titleController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Título *',
+                  labelStyle: context.customTextTheme.textSm.copyWith(
+                    color: context.customColorTheme.mutedForeground,
+                  ),
+                  hintText: 'Digite o título da tarefa',
+                  hintStyle: context.customTextTheme.textSm.copyWith(
+                    color: context.customColorTheme.mutedForeground,
+                  ),
+                  filled: true,
+                  fillColor: context.customColorTheme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.border,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.border,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.destructive,
+                    ),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.destructive,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                style: context.customTextTheme.textBase.copyWith(
+                  color: context.customColorTheme.cardForeground,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'O título é obrigatório';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Campo de Descrição
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Descrição',
+                  labelStyle: context.customTextTheme.textSm.copyWith(
+                    color: context.customColorTheme.mutedForeground,
+                  ),
+                  hintText: 'Digite a descrição da tarefa (opcional)',
+                  hintStyle: context.customTextTheme.textSm.copyWith(
+                    color: context.customColorTheme.mutedForeground,
+                  ),
+                  filled: true,
+                  fillColor: context.customColorTheme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.border,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.border,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: context.customColorTheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                style: context.customTextTheme.textBase.copyWith(
+                  color: context.customColorTheme.cardForeground,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Botões de Ação
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Botão Cancelar
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: Text(
+                      'Cancelar',
+                      style: context.customTextTheme.textSmMedium.copyWith(
+                        color: context.customColorTheme.mutedForeground,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Botão Salvar
+                  ElevatedButton(
+                    onPressed: _handleSave,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.customColorTheme.primary,
+                      foregroundColor: context.customColorTheme.primaryForeground,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      isEditing ? 'Salvar' : 'Criar',
+                      style: context.customTextTheme.textSmMedium.copyWith(
+                        color: context.customColorTheme.primaryForeground,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

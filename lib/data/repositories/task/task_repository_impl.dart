@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:mastering_tests/data/services/api/api_serivce.dart';
 import 'package:mastering_tests/domain/models/task_model.dart';
 import 'package:mastering_tests/exceptions/app_exception.dart';
+import 'package:mastering_tests/templates/flutter_templates/simple_mock_template.dart';
 import 'package:mastering_tests/utils/logger/custom_logger.dart';
 import '../../../utils/result.dart';
 import 'task_repository.dart';
@@ -19,6 +20,7 @@ import 'task_repository.dart';
       
         @override
         Future<Result<TaskModel>> createTask({required TaskModel task}) async {
+          return TaskMock.addTask(task);
           try {
             final response = await _apiService.request(url: '$_baseUrl/tasks', metodo: .post, body: task.toJson())
             .map(TaskModel.fromJson);
@@ -31,6 +33,7 @@ import 'task_repository.dart';
       
         @override
         Future<Result<dynamic>> deleteTask({required String taskId}) async {
+          return TaskMock.deleteTask(taskId);
           try {
             final response = await _apiService.request(url: '$_baseUrl/tasks/$taskId', metodo: .delete);
             return response;
@@ -42,6 +45,7 @@ import 'task_repository.dart';
       
         @override
         Future<Result<List<TaskModel>>> getAllTasks() async {
+          return TaskMock.getMockTasks();
           try {
             final response = await _apiService.request(url: '$_baseUrl/tasks', metodo: .get)
             .map((data) {
@@ -57,6 +61,7 @@ import 'task_repository.dart';
       
         @override
         Future<Result<TaskModel>> getTaskBy({required String taskId}) async {
+          return TaskMock.getTaskById(taskId);
           try {
             final response = await _apiService.request(url: '$_baseUrl/tasks/$taskId', metodo: .get)
             .map(TaskModel.fromJson);
@@ -69,6 +74,7 @@ import 'task_repository.dart';
       
         @override
         Future<Result<TaskModel>> updateTask({required TaskModel task}) async {
+          return TaskMock.updateTask(task);
           try {
             final response = await _apiService.request(url: '$_baseUrl/tasks/${task.id}', metodo: .put, body: task.toJson())
             .map(TaskModel.fromJson);
