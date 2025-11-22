@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:mastering_tests/domain/models/task_model.dart';
 import 'package:mastering_tests/ui/core/extensions/build_context_extension.dart';
 
-/// Card de tarefa seguindo o design HTML com fidelidade de 100%
+/// Task card following HTML design with 100% fidelity
 ///
-/// Estrutura:
-/// - Esquerda: Checkbox circular com borda colorida
-/// - Centro: Título da tarefa + data/hora com ícones
-/// - Direita: Tag de categoria
+/// Structure:
+/// - Left: Circular checkbox with colored border
+/// - Center: Task title + date/time with icons
+/// - Right: Category tag
 class TaskCard extends StatelessWidget {
   final TaskModel task;
   final VoidCallback onTap;
@@ -24,33 +24,33 @@ class TaskCard extends StatelessWidget {
     required this.index,
   });
 
-  /// Retorna a cor da borda do checkbox baseada no índice
-  /// Alterna entre azul, vermelho e cinza para variedade visual
+  /// Returns checkbox border color based on index
+  /// Alternates between blue, red and gray for visual variety
   Color _getBorderColor(BuildContext context) {
     if (task.isCompleted) {
       return context.customColorTheme.mutedForeground;
     }
 
-    // Alterna cores para simular prioridades diferentes
+    // Alternates colors to simulate different priorities
     switch (index % 3) {
       case 0:
-        return context.customColorTheme.primary; // Azul
+        return context.customColorTheme.primary; // Blue
       case 1:
-        return context.customColorTheme.destructive; // Vermelho
+        return context.customColorTheme.destructive; // Red
       default:
-        return context.customColorTheme.border; // Cinza
+        return context.customColorTheme.border; // Gray
     }
   }
 
-  /// Retorna a cor do texto de data/hora
+  /// Returns date/time text color
   Color _getDateTimeColor(BuildContext context) {
     if (task.isCompleted) {
       return context.customColorTheme.mutedForeground;
     }
-    return context.customColorTheme.success; // Verde como no HTML
+    return context.customColorTheme.success; // Green as in HTML
   }
 
-  /// Formata a data de criação
+  /// Formats creation date
   String _formatDateTime() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -61,13 +61,13 @@ class TaskCard extends StatelessWidget {
     );
 
     if (taskDate == today) {
-      // Mostra hora se for hoje
+      // Shows time if today
       final hour = task.createdAt.hour.toString().padLeft(2, '0');
       final minute = task.createdAt.minute.toString().padLeft(2, '0');
       return '$hour:$minute';
     } else {
-      // Mostra dia da semana se for outro dia
-      final weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      // Shows day of week if another day
+      final weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return weekdays[task.createdAt.weekday % 7];
     }
   }
@@ -91,19 +91,19 @@ class TaskCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Checkbox circular (esquerda)
+            // Circular checkbox (left)
             _buildCheckbox(context),
 
-            const SizedBox(width: 16), // space-x-4 do HTML
+            const SizedBox(width: 16), // space-x-4 from HTML
 
-            // Conteúdo principal (centro)
+            // Main content (center)
             Expanded(
               child: _buildContent(context),
             ),
 
             const SizedBox(width: 8),
 
-            // Tag de categoria (direita)
+            // Category tag (right)
             _buildCategoryTag(context),
           ],
         ),
@@ -111,10 +111,10 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  /// Checkbox circular com borda colorida
+  /// Circular checkbox with colored border
   Widget _buildCheckbox(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4), // pt-1 do HTML
+      padding: const EdgeInsets.only(top: 4), // pt-1 from HTML
       child: GestureDetector(
         onTap: onToggleComplete,
         child: Container(
@@ -142,12 +142,12 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  /// Conteúdo principal: título + data/hora
+  /// Main content: title + date/time
   Widget _buildContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Título da tarefa
+        // Task title
         Text(
           task.title,
           style: context.customTextTheme.textBase.copyWith(
@@ -158,24 +158,24 @@ class TaskCard extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 4), // mt-1 do HTML
+        const SizedBox(height: 4), // mt-1 from HTML
 
-        // Data/hora com ícones
+        // Date/time with icons
         Row(
           children: [
             Icon(
               Icons.calendar_today,
-              size: 16, // text-base do HTML
+              size: 16, // text-base from HTML
               color: _getDateTimeColor(context),
             ),
-            const SizedBox(width: 6), // mr-1.5 do HTML
+            const SizedBox(width: 6), // mr-1.5 from HTML
             Text(
               _formatDateTime(),
               style: context.customTextTheme.textSm.copyWith(
                 color: _getDateTimeColor(context),
               ),
             ),
-            const SizedBox(width: 8), // ml-2 do HTML
+            const SizedBox(width: 8), // ml-2 from HTML
             Icon(
               Icons.repeat,
               size: 16,
@@ -187,10 +187,10 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  /// Tag de categoria (direita)
+  /// Category tag (right)
   Widget _buildCategoryTag(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4), // pt-1 do HTML
+      padding: const EdgeInsets.only(top: 4), // pt-1 from HTML
       child: Text(
         'Tasks #',
         style: context.customTextTheme.textSm.copyWith(

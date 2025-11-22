@@ -8,13 +8,13 @@ import 'componentes/task_card.dart';
 import 'componentes/task_form_dialog.dart';
 import 'componentes/task_empty_state.dart';
 
-/// Tela principal de gerenciamento de tarefas
+/// Main task management screen
 ///
-/// Design 100% fiel ao HTML em design.html com:
-/// - Header "Today" + botões de sort/menu
-/// - Lista de cards de tarefas
-/// - FAB para criar nova tarefa
-/// - Estados: loading, error, empty, success
+/// Design 100% faithful to HTML in design.html with:
+/// - Header "Today" + sort/menu buttons
+/// - List of task cards
+/// - FAB to create new task
+/// - States: loading, error, empty, success
 final class TaskScreen extends StatefulWidget {
   final TaskViewModel viewModel;
 
@@ -29,12 +29,12 @@ class _TaskScreenState extends State<TaskScreen> {
   void initState() {
     super.initState();
 
-    // LISTENERS OBRIGATÓRIOS PARA 3 COMMANDS
+    // REQUIRED LISTENERS FOR 3 COMMANDS
     widget.viewModel.updateTask.addListener(_onUpdateResult);
     widget.viewModel.deleteTask.addListener(_onDeleteResult);
     widget.viewModel.createTask.addListener(_onCreateResult);
 
-    // EXECUTAR GET ALL OBRIGATÓRIO
+    // REQUIRED EXECUTE GET ALL
     widget.viewModel.getAllTasks.execute();
   }
 
@@ -260,12 +260,22 @@ class _TaskScreenState extends State<TaskScreen> {
           ],
         ),
         actions: [
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.customColorTheme.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: context.customColorTheme.border,
+                  width: 1,
+                )
+              ),
+            ),
             child: Text(
               'Fechar',
               style: context.customTextTheme.textSmMedium.copyWith(
-                color: context.customColorTheme.primary,
+                color: context.customColorTheme.mutedForeground,
               ),
             ),
           ),

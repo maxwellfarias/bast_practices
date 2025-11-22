@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mastering_tests/ui/core/extensions/build_context_extension.dart';
 
-/// Widget para o estado vazio (quando não há tarefas)
+/// Widget for empty state (when there are no tasks)
 class TaskEmptyState extends StatelessWidget {
   const TaskEmptyState({super.key});
 
@@ -11,7 +11,7 @@ class TaskEmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Ícone de checklist
+          // Checklist icon
           Icon(
             Icons.checklist_rounded,
             size: 80,
@@ -20,9 +20,9 @@ class TaskEmptyState extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Mensagem
+          // Message
           Text(
-            'Nenhuma tarefa encontrada',
+            'No tasks found',
             style: context.customTextTheme.textLgMedium.copyWith(
               color: context.customColorTheme.mutedForeground,
             ),
@@ -30,9 +30,9 @@ class TaskEmptyState extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          // Submensagem
+          // Submessage
           Text(
-            'Toque no botão + para criar uma nova tarefa',
+            'Tap the + button to create a new task',
             style: context.customTextTheme.textSm.copyWith(
               color: context.customColorTheme.mutedForeground,
             ),

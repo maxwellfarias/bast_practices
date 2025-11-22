@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:mastering_tests/domain/models/task_model.dart';
 import 'package:mastering_tests/ui/core/extensions/build_context_extension.dart';
 
-/// Dialog para criação e edição de tarefas
+/// Dialog for creating and editing tasks
 ///
-/// Possui dois modos:
-/// - Criação: task == null
-/// - Edição: task != null
+/// Has two modes:
+/// - Creation: task == null
+/// - Edition: task != null
 class TaskFormDialog extends StatefulWidget {
   final TaskModel? task;
   final Function(String title, String description) onSave;
@@ -69,9 +69,9 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Título do Dialog
+              // Dialog title
               Text(
-                isEditing ? 'Editar Tarefa' : 'Nova Tarefa',
+                isEditing ? 'Edit Task' : 'New Task',
                 style: context.customTextTheme.text2xlBold.copyWith(
                   color: context.customColorTheme.cardForeground,
                 ),
@@ -79,16 +79,16 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
 
               const SizedBox(height: 24),
 
-              // Campo de Título
+              // Title field
               TextFormField(
                 controller: _titleController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  labelText: 'Título *',
+                  labelText: 'Title *',
                   labelStyle: context.customTextTheme.textSm.copyWith(
                     color: context.customColorTheme.mutedForeground,
                   ),
-                  hintText: 'Digite o título da tarefa',
+                  hintText: 'Enter task title',
                   hintStyle: context.customTextTheme.textSm.copyWith(
                     color: context.customColorTheme.mutedForeground,
                   ),
@@ -132,7 +132,7 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'O título é obrigatório';
+                    return 'Title is required';
                   }
                   return null;
                 },
@@ -140,16 +140,17 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
 
               const SizedBox(height: 16),
 
-              // Campo de Descrição
+              // Description field
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  labelText: 'Descrição',
+                  contentPadding: EdgeInsets.all(12),
+                  labelText: 'Description',
                   labelStyle: context.customTextTheme.textSm.copyWith(
                     color: context.customColorTheme.mutedForeground,
                   ),
-                  hintText: 'Digite a descrição da tarefa (opcional)',
+                  hintText: 'Enter task description (optional)',
                   hintStyle: context.customTextTheme.textSm.copyWith(
                     color: context.customColorTheme.mutedForeground,
                   ),
@@ -182,21 +183,25 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
 
               const SizedBox(height: 24),
 
-              // Botões de Ação
+              // Action buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // Botão Cancelar
-                  TextButton(
+                  // Cancel button
+                  FilledButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: context.customColorTheme.card,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: context.customColorTheme.border,
+                          width: 1,
+                        ),
                       ),
                     ),
                     child: Text(
-                      'Cancelar',
+                      'Fechar',
                       style: context.customTextTheme.textSmMedium.copyWith(
                         color: context.customColorTheme.mutedForeground,
                       ),
@@ -205,7 +210,7 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
 
                   const SizedBox(width: 12),
 
-                  // Botão Salvar
+                  // Save button
                   ElevatedButton(
                     onPressed: _handleSave,
                     style: ElevatedButton.styleFrom(
@@ -220,7 +225,7 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
                       ),
                     ),
                     child: Text(
-                      isEditing ? 'Salvar' : 'Criar',
+                      isEditing ? 'Save' : 'Create',
                       style: context.customTextTheme.textSmMedium.copyWith(
                         color: context.customColorTheme.primaryForeground,
                       ),
