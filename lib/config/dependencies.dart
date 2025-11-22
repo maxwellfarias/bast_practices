@@ -18,7 +18,15 @@ List<SingleChildWidget> get providers {
     Provider(create: (_) => CustomLoggerImpl(logger: Logger()) as CustomLogger),
     Provider(create: (_) => Dio()),
     Provider(create: (context) => ApiClientImpl(dio: context.read<Dio>(), logger: context.read<CustomLogger>()) as ApiClient),
-    Provider(create: (context) => TaskRepositoryImpl(apiService: context.read<ApiClient>()) as TaskRepository),
+    Provider(
+      create: (context) =>
+          TaskRepositoryImpl(
+                apiService: context.read<ApiClient>(),
+                baseUrl: "your_base_url_here",
+                logger: context.read<CustomLogger>(),
+              )
+              as TaskRepository,
+    ),
     Provider(create: (context) => TaskViewModel(taskRepository: context.read<TaskRepository>())),
   ];
 }
